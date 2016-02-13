@@ -138,6 +138,8 @@ V(struct semaphore *sem)
 //
 // Lock.
 
+
+
 struct lock *
 lock_create(const char *name)
 {
@@ -156,6 +158,19 @@ lock_create(const char *name)
 
 	// add stuff here as needed
 
+	lock->lk_wchan = wchan_create(lock->lk_name);
+
+//	if(lock->lk_wchan==NULL) {
+//		kfree(lock->lk_name);
+//		kfree(lock);
+//		return NULL;
+//	}
+
+	spinlock_init(&lock->lk_spinlock);
+	lock->lk_isLocked = false; //unlocked
+	lock->holder = NULL; //no thread is holding it right now.
+	//added - sammok
+
 	return lock;
 }
 
@@ -164,36 +179,61 @@ lock_destroy(struct lock *lock)
 {
 	KASSERT(lock != NULL);
 
-	// add stuff here as needed
+	// add stuff here as needed TODO Sammok
+
+
+	KASSERT(lock->holder==NULL); //assert that no thread is holding it
+
+	wchan_destroy(lock->lk_wchan);
 
 	kfree(lock->lk_name);
 	kfree(lock);
+
 }
 
 void
-lock_acquire(struct lock *lock)
-{
+lock_acquire(struct lock *lock) {
 	// Write this
 
-	(void)lock;  // suppress warning until code gets written
+	KASSERT(lock!=NULL);
+
+	//Adding - sammokka
+
+	KASSERT(curthread->t_in_interrupt == false);//check if it's not an interrrupt
+
+	spinlock_acquire(&lock->lk_spinlock);
+
+	//Keep looping until lock is unlocked
+	while (lock->lk_isLocked) {
+		wchan_sleep(lock->lk_wchan, &lock->lk_spinlock);
+	}
+	lock->lk_isLocked = true;
+	lock->holder = curthread;
+
+	spinlock_release(&lock->lk_spinlock);
 }
 
 void
-lock_release(struct lock *lock)
-{
-	// Write this
-
-	(void)lock;  // suppress warning until code gets written
+lock_release(struct lock *lock) {
+	//added by sammokka
+	KASSERT(lock!=NULL);
+	spinlock_acquire(&lock->lk_spinlock);
+	KASSERT(lock->lk_isLocked==true);
+	lock->lk_isLocked = false;
+	lock->holder = NULL;
+	wchan_wakeone(lock->lk_wchan, &lock->lk_spinlock);
+	spinlock_release(&lock->lk_spinlock);
 }
 
-bool
-lock_do_i_hold(struct lock *lock)
-{
+bool lock_do_i_hold(struct lock *lock) {
 	// Write this
+	KASSERT(lock!=NULL);
 
-	(void)lock;  // suppress warning until code gets written
-
-	return true; // dummy until code gets written
+	if (lock->holder == curthread) {
+		return true; // dummy until code gets written
+	} else {
+		return false;
+	}
 }
 
 ////////////////////////////////////////////////////////////
