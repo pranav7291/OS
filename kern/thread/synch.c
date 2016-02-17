@@ -40,6 +40,7 @@
 #include <current.h>
 #include <synch.h>
 
+#define MAX_READERS 30 //added by Sammokka
 ////////////////////////////////////////////////////////////
 //
 // Semaphore.
@@ -344,3 +345,82 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 	//(void)cv;    // suppress warning until code gets written
 	//(void)lock;  // suppress warning until code gets written
 }
+
+
+//Read-write locks implemeted by Sammok..
+//Referenced from : http://jhshi.me/2013/04/05/os161-synchronization-primitives-rwlock/index.html
+
+
+/**
+ * 	 For acquiring a read lock
+ * 	 1. acquire a lock
+ * 	 2. acquire the resource using p
+ * 	 3. release the lock
+ */
+void rwlock_acquire_read(struct rwlock *rwlock) {
+
+	//Sammokka
+	KASSERT(rwlock!=NULL);
+	KASSERT(rwlock->rwlock_lock!=NULL);
+
+	//acquire a lock --? what kind of lock? wher does this lock come from? i think spinlock.
+	//use rwlock->rwlock_spinlock? or rwlock->rwlock_sem->sem_spinlock?
+	lock_acquire(rwlock->rwlock_lock);
+	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
+
+	//acquire resource using p?
+	//using the semaphore?
+	P(&rwlock->rwlock_semaphore);
+
+	//release the lock --> same as comment earlier
+	lock_release(rwlock->rwlock_lock);
+
+	KASSERT(rwlock->rwlock_lock->lk_isLocked==false);
+
+}
+
+//release the resource using v
+void rwlock_release_read(struct rwlock *rwlock) {
+	//Sammokka
+	KASSERT(rwlock!=NULL);
+
+	V(&rwlock->rwlock_semaphore);
+}
+
+//1. acquire the lock  - readers/wroters can acquire the lock
+
+/**
+ *
+    Acquire the lock, so that no other readers/writer would be able to acquire the rwlock
+    Acquire ALL the resources by doing P MAX_READERS times
+    Release the lock. It's safe now since we got all the resources.
+ *
+ */
+void rwlock_acquire_write(struct rwlock *rwlock) {
+	//sammokka
+
+	KASSERT(rwlock!=NULL);
+
+
+	lock_acquire(rwlock->rwlock_lock);
+	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
+
+	for (int i = 0; i < MAX_READERS; i++) {
+		P(&rwlock->rwlock_semaphore);
+	}
+	lock_release(rwlock->rwlock_lock);
+	KASSERT(rwlock->rwlock_lock->lk_isLocked==false);
+}
+
+//release all resources
+void rwlock_release_write(struct rwlock *rwlock){
+	//sammokka
+
+	KASSERT(rwlock!=NULL);
+
+	for (int i = 0; i < MAX_READERS; i++) {
+		V(&rwlock->rwlock_semaphore);
+	}
+}
+
+
