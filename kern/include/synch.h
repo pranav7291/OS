@@ -161,6 +161,7 @@ struct rwlock {
         struct lock *rwlock_lock;
         struct spinlock rwlock_spinlock;
         struct semaphore rwlock_semaphore;
+        int max_readers = 30;
         // add what you need here
         // (don't forget to mark things volatile as needed)
 };
