@@ -159,7 +159,7 @@ turnleft(uint32_t direction, uint32_t index) {
 				a[j] = swap;
 			}
 		}
-	} ?
+	}
 //	kprintf_n("printing ordering of direction(go left).. %d,%d,%d\n",a[0],a[1],a[2]);
 
 	//added by sammokka
