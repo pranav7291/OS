@@ -413,15 +413,8 @@ void rwlock_release_read(struct rwlock *rwlock) {
 	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
 	V(rwlock->rwlock_semaphore);
 }
-
-//1. acquire the lock  - readers/writers can acquire the lock
-
 /**
- *
-    Acquire the lock, so that no other readers/writer would be able to acquire the rwlock
-    Acquire ALL the resources by doing P MAX_READERS times
-    Release the lock. It's safe now since we got all the resources.
- *
+ * acquire the lock, P Max_reader types, release the lock
  */
 void rwlock_acquire_write(struct rwlock *rwlock) {
 	//sammokka
