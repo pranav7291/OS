@@ -446,7 +446,7 @@ void rwlock_release_write(struct rwlock *rwlock){
 
 	KASSERT(rwlock!=NULL);
 	KASSERT(curthread->t_in_interrupt == false);
-	KASSERT(rwlock->rwlock_semaphore->sem_count!=0);
+	KASSERT(rwlock->rwlock_semaphore->sem_count==0);
 
 
 	for (int i = 0; i < MAX_READERS; i++) {
