@@ -368,6 +368,7 @@ struct rwlock* rwlock_create(const char* name) {
 }
 
 void rwlock_destroy(struct rwlock* rwlock) {
+	KASSERT(rwlock != NULL);
 	sem_destroy(rwlock->rwlock_semaphore);
 //	KASSERT(rwlock->rwlock_semaphore==NULL);
 	lock_destroy(rwlock->rwlock_lock);
@@ -411,6 +412,8 @@ void rwlock_acquire_read(struct rwlock *rwlock) {
 void rwlock_release_read(struct rwlock *rwlock) {
 //	//Sammokka
 	KASSERT(rwlock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);
+
 //	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
 	V(rwlock->rwlock_semaphore);
 }
@@ -440,6 +443,7 @@ void rwlock_release_write(struct rwlock *rwlock){
 	//sammokka
 
 	KASSERT(rwlock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);
 
 	for (int i = 0; i < MAX_READERS; i++) {
 		V(rwlock->rwlock_semaphore);
