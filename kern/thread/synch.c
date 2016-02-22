@@ -389,6 +389,7 @@ void rwlock_acquire_read(struct rwlock *rwlock) {
 	//Sammokka
 	KASSERT(rwlock!=NULL);
 	KASSERT(rwlock->rwlock_lock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);
 
 	//acquire a lock --? what kind of lock? wher does this lock come from? i think spinlock.
 	//use rwlock->rwlock_spinlock? or rwlock->rwlock_sem->sem_spinlock?
@@ -409,7 +410,7 @@ void rwlock_acquire_read(struct rwlock *rwlock) {
 //release the resource using v
 void rwlock_release_read(struct rwlock *rwlock) {
 //	//Sammokka
-//	KASSERT(rwlock!=NULL);
+	KASSERT(rwlock!=NULL);
 //	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
 	V(rwlock->rwlock_semaphore);
 }
@@ -420,6 +421,8 @@ void rwlock_acquire_write(struct rwlock *rwlock) {
 	//sammokka
 
 	KASSERT(rwlock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);
+
 
 
 	lock_acquire(rwlock->rwlock_lock);
