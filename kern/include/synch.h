@@ -159,8 +159,8 @@ void cv_broadcast(struct cv *cv, struct lock *lock);
 struct rwlock {
         char *rwlock_name;
         struct lock *rwlock_lock;
-        struct spinlock rwlock_spinlock;
-        struct semaphore rwlock_semaphore;
+        struct spinlock *rwlock_spinlock;
+        struct semaphore *rwlock_semaphore;
 //        int max_readers = 30;
         // add what you need here
         // (don't forget to mark things volatile as needed)

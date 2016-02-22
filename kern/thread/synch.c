@@ -229,7 +229,6 @@ lock_release(struct lock *lock) {
 bool lock_do_i_hold(struct lock *lock) {
 	// Write this
 	KASSERT(lock!=NULL);
-
 	if (lock->holder == curthread) {
 		return true; // dummy until code gets written
 	} else {
@@ -347,9 +346,37 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 }
 
 
-//Read-write locks implemeted by Sammok..
-//Referenced from : http://jhshi.me/2013/04/05/os161-synchronization-primitives-rwlock/index.html
+struct rwlock* rwlock_create(const char* name) {
 
+	struct rwlock *rwlock;
+	rwlock = kmalloc(sizeof(*rwlock));
+	if (rwlock == NULL) {
+		return NULL;
+	}
+
+	rwlock->rwlock_name = kstrdup(name);
+	if (rwlock->rwlock_name == NULL) {
+		kfree(rwlock);
+		return NULL;
+	}
+
+	rwlock->rwlock_name = 	kstrdup(name);
+	rwlock->rwlock_lock = lock_create(rwlock->rwlock_name);
+	rwlock->rwlock_semaphore = sem_create(rwlock->rwlock_name, MAX_READERS);
+	return rwlock;
+
+}
+
+void rwlock_destroy(struct rwlock* rwlock) {
+	sem_destroy(rwlock->rwlock_semaphore);
+	KASSERT(rwlock->rwlock_semaphore==NULL);
+	lock_destroy(rwlock->rwlock_lock);
+	KASSERT(rwlock->rwlock_lock==NULL);
+	kfree(rwlock->rwlock_name);
+	KASSERT(rwlock->rwlock_name==NULL);
+	kfree(rwlock);
+	KASSERT(rwlock==NULL);
+}
 
 /**
  * 	 For acquiring a read lock
@@ -370,7 +397,7 @@ void rwlock_acquire_read(struct rwlock *rwlock) {
 
 	//acquire resource using p?
 	//using the semaphore?
-	P(&rwlock->rwlock_semaphore);
+	P(rwlock->rwlock_semaphore);
 
 	//release the lock --> same as comment earlier
 	lock_release(rwlock->rwlock_lock);
@@ -383,11 +410,11 @@ void rwlock_acquire_read(struct rwlock *rwlock) {
 void rwlock_release_read(struct rwlock *rwlock) {
 	//Sammokka
 	KASSERT(rwlock!=NULL);
-
-	V(&rwlock->rwlock_semaphore);
+	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
+	V(rwlock->rwlock_semaphore);
 }
 
-//1. acquire the lock  - readers/wroters can acquire the lock
+//1. acquire the lock  - readers/writers can acquire the lock
 
 /**
  *
@@ -406,7 +433,7 @@ void rwlock_acquire_write(struct rwlock *rwlock) {
 	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
 
 	for (int i = 0; i < MAX_READERS; i++) {
-		P(&rwlock->rwlock_semaphore);
+		P(rwlock->rwlock_semaphore);
 	}
 	lock_release(rwlock->rwlock_lock);
 	KASSERT(rwlock->rwlock_lock->lk_isLocked==false);
@@ -419,8 +446,10 @@ void rwlock_release_write(struct rwlock *rwlock){
 	KASSERT(rwlock!=NULL);
 
 	for (int i = 0; i < MAX_READERS; i++) {
-		V(&rwlock->rwlock_semaphore);
+		V(rwlock->rwlock_semaphore);
 	}
 }
+
+
 
 
