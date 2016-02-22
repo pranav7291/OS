@@ -413,6 +413,8 @@ void rwlock_release_read(struct rwlock *rwlock) {
 //	//Sammokka
 	KASSERT(rwlock!=NULL);
 	KASSERT(curthread->t_in_interrupt == false);
+	KASSERT(rwlock->rwlock_semaphore->sem_count<MAX_READERS);
+
 
 //	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
 	V(rwlock->rwlock_semaphore);
@@ -444,6 +446,8 @@ void rwlock_release_write(struct rwlock *rwlock){
 
 	KASSERT(rwlock!=NULL);
 	KASSERT(curthread->t_in_interrupt == false);
+	KASSERT(rwlock->rwlock_semaphore->sem_count!=0);
+
 
 	for (int i = 0; i < MAX_READERS; i++) {
 		V(rwlock->rwlock_semaphore);
