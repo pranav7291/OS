@@ -369,13 +369,13 @@ struct rwlock* rwlock_create(const char* name) {
 
 void rwlock_destroy(struct rwlock* rwlock) {
 	sem_destroy(rwlock->rwlock_semaphore);
-	KASSERT(rwlock->rwlock_semaphore==NULL);
+//	KASSERT(rwlock->rwlock_semaphore==NULL);
 	lock_destroy(rwlock->rwlock_lock);
-	KASSERT(rwlock->rwlock_lock==NULL);
+//	KASSERT(rwlock->rwlock_lock==NULL);
 	kfree(rwlock->rwlock_name);
-	KASSERT(rwlock->rwlock_name==NULL);
+//	KASSERT(rwlock->rwlock_name==NULL);
 	kfree(rwlock);
-	KASSERT(rwlock==NULL);
+//	KASSERT(rwlock==NULL);
 }
 
 /**
@@ -402,15 +402,15 @@ void rwlock_acquire_read(struct rwlock *rwlock) {
 	//release the lock --> same as comment earlier
 	lock_release(rwlock->rwlock_lock);
 
-	KASSERT(rwlock->rwlock_lock->lk_isLocked==false);
+//	KASSERT(rwlock->rwlock_lock->lk_isLocked==false);
 
 }
 
 //release the resource using v
 void rwlock_release_read(struct rwlock *rwlock) {
-	//Sammokka
-	KASSERT(rwlock!=NULL);
-	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
+//	//Sammokka
+//	KASSERT(rwlock!=NULL);
+//	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
 	V(rwlock->rwlock_semaphore);
 }
 /**
@@ -429,7 +429,7 @@ void rwlock_acquire_write(struct rwlock *rwlock) {
 		P(rwlock->rwlock_semaphore);
 	}
 	lock_release(rwlock->rwlock_lock);
-	KASSERT(rwlock->rwlock_lock->lk_isLocked==false);
+//	KASSERT(rwlock->rwlock_lock->lk_isLocked==false);
 }
 
 //release all resources
