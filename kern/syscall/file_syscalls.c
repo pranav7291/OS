@@ -4,22 +4,10 @@
 #include <clock.h>
 #include <copyinout.h>
 #include <syscall.h>
-#include <unistd.h>
 #include <current.h>
 
 
 
-struct filedesc {
-	struct vnode *fd_vnode;
-	int fd_refcount;
-	int fd_count;
-	struct lock *fd_lock
-	char name[100];
-	int offset;
-	int isempty;
-	int flags;
-	int read_count;
-};
 
 /**
  * Added by sammokka
@@ -36,8 +24,6 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int *retval) 
 //if error, handles
 
 	KASSERT(curthread->t_in_interrupt == false);
-
-
 	mode_t mode = 0664; //TODO Dunno what this means but whatever.
 
 	kprintf("\nin sys_open..\n");
@@ -75,10 +61,10 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int *retval) 
 
 		int inserted_flag = 0;
 		for(int i = 3; i<50; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
-			if(curthread->filedesc[i]!=NULL) {
+			if(curthread->thread_filedesc[i]!=NULL) {
 				continue;
 			}
-			if(curthread->filedesc[i]->isempty!=0) {
+			if(curthread->thread_filedesc[i]->isempty!=0) {
 				continue;
 			}
 
@@ -94,8 +80,9 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int *retval) 
 			filedesc->flags = flags;
 			filedesc->read_count = 1;
 
+
 			//make the thread->filedesc point to the filedesc
-			curthread->filedesc= filedesc;
+			curthread->thread_filedesc= filedesc;
 
 			*retval = i;
 			break;
@@ -108,7 +95,7 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int *retval) 
 		kprintf("some error in vfs_open()");
 	}
 
-	return 0; //TODO handle returns. only specific returns possible, and returns the descriptor
+	return 0; //returns 0 if no error.
 }
 
 

@@ -39,6 +39,8 @@
 #include <array.h>
 #include <spinlock.h>
 #include <threadlist.h>
+#include "../include/file_syscalls.h"
+
 
 struct cpu;
 
@@ -107,7 +109,7 @@ struct thread {
 
 	/* add more here as needed */
 
-	struct filedesc *filedesc[50];
+	struct filedesc thread_filedesc[50];
 	int count_filedesc;
 };
 
