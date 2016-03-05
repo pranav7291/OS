@@ -17,7 +17,7 @@ struct filedesc {
  O_WRONLY		Open for writing only.
  O_RDWR		Open for reading and writing.
  */
-int sys_open(char* filename, int flags, int32_t *retval);
+int sys_open(char *filename, int flags, int32_t *retval);
 
 int sys_close(int fd);
 

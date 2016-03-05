@@ -114,7 +114,7 @@ syscall(struct trapframe *tf)
 
 		//TODO sammok
 	case SYS_open :
-		err = sys_open((char*)tf->tf_a0,
+		err = sys_open((char *)tf->tf_a0,
 				(int)tf->tf_a1, &retval)	;
 		break;
 
