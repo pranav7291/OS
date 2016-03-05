@@ -58,11 +58,11 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 		//iterate over all the fds to check if there is an fd number missing, insert the fd there
 
 		int inserted_flag = 0;
-		for(int i = 3; i<50; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
-			if(curproc->thread_filedesc[i]!=NULL) {
+		for (int i = 3; i < 50; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
+			if (curthread->t_proc->thread_filedesc[i] != NULL) {
 				continue;
 			}
-			if(curproc->thread_filedesc[i]->isempty!=0) {
+			if (curthread->t_proc->thread_filedesc[i]->isempty != 0) {
 				continue;
 			}
 
@@ -80,7 +80,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 
 
 			//make the thread->filedesc point to the filedesc
-			curthread->thread_filedesc= filedesc_ptr;
+			curthread->t_proc ->thread_filedesc= filedesc_ptr;
 
 			*retval = i;
 			break;
