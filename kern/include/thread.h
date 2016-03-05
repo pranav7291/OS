@@ -107,7 +107,8 @@ struct thread {
 
 	/* add more here as needed */
 
-	struct filedesc *fd;
+	struct filedesc filedesc[50];
+	int count_filedesc;
 };
 
 
