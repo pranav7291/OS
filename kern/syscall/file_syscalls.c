@@ -17,6 +17,8 @@ struct filedesc {
 	char name[100];
 	int offset;
 	int isempty;
+	int flags;
+	int read_count;
 };
 
 /**
@@ -28,7 +30,7 @@ struct filedesc {
  *
  *  eg: O_WRONLY|O_CREAT|O_TRUNC
  */
-int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags) {
+int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int *retval) {
 
 //call vfs_open
 //if error, handles
@@ -38,7 +40,7 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags) {
 
 	mode_t mode = 0664; //TODO Dunno what this means but whatever.
 
-	printf("\nin sys_open..\n");
+	kprintf("\nin sys_open..\n");
 
 
 	char name[100];
@@ -46,69 +48,65 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags) {
 	int *flags;
 	int result;
 
-	result = copyin(usr_ptr_flags, flags, sizeof(flags));
+//	result = copyinstr(usr_ptr_flags, flags, sizeof(flags));
+
+//	if(result) { //memory problem
+//		printf("\nSome memory problem, copyin failstryin to copy flags %d\n", result);
+//		return result;
+//	}
+
+	result = copyinstr(usr_ptr_filename, name, sizeof(name));
 
 	if(result) { //memory problem
-		printf("\nSome memory problem, copyin failstryin to copy flags %d\n", result);
-		return result;
-	}
-
-	result = copyin(usr_ptr_filename, name, sizeof(name));
-
-	if(result) { //memory problem
-		printf("\nSome memory problem, copyin fails when copy name %d\n", result);
+		kprintf("\nSome memory problem, copyin fails when copy name %d\n", result);
 		return result;
 	}
 
 	struct vnode *ret; //empty nvnode
 
+	int returner = vfs_open(name, usr_ptr_flags, mode, &ret);
 
-
-
-	//TODO file descriptor insertion logic
-
-
-
-
-
-	int returner = vfs_open(name, flags, mode, &ret);
-
-	if (returner > 2) {
-		printf("successfully opened file %s", name);
+	if (returner==0) {
+		kprintf("successfully opened file %s\n", name);
 
 		//add an fd to the list of fds in the thread's fd table
 
 		//iterate over all the fds to check if there is an fd number missing, insert the fd there
-		for(int i = 0; i<50; i++) {
+
+		int inserted_flag = 0;
+		for(int i = 3; i<50; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
 			if(curthread->filedesc[i]!=NULL) {
 				continue;
 			}
+			if(curthread->filedesc[i]->isempty!=0) {
+				continue;
+			}
 
+			// if it gets to here, then it's found an index where pointer is not used up
 
+			//now create a filedesc structure
 
+			struct filedesc *filedesc;
+			filedesc=kmalloc(sizeof(*filedesc));
+			filedesc->fd_lock = lock_create(); 			//not sure when i should use this lock
+			filedesc->isempty = 1; //not empty
+			filedesc->fd_vnode = ret; //pointer to vnode object to be stored in filedesc->vnode
+			filedesc->flags = flags;
+			filedesc->read_count = 1;
+
+			//make the thread->filedesc point to the filedesc
+			curthread->filedesc= filedesc;
+
+			*retval = i;
+			break;
+		}
+		if(inserted_flag==0) {
+			panic("oops, ran out of fd's lel.\n");
 		}
 
-
-		//allocate memory for a new fd
-		struct filedesc *filedesc;
-		filedesc = malloc(sizeof(filedesc));
-		curthread->filedesc = malloc(sizeof(*filedesc));
-
-
-		//
-
-
-
-
 	} else {
-		printf("some error in vfs_open()");
-
+		kprintf("some error in vfs_open()");
 	}
-
-	//todo if returner is positive, add it to file table
-
-
-	//todo copy the return value to memrory in copyin
 
 	return 0; //TODO handle returns. only specific returns possible, and returns the descriptor
 }
