@@ -39,7 +39,7 @@
 #include <array.h>
 #include <spinlock.h>
 #include <threadlist.h>
-#include "../include/file_syscalls.h"
+#include <file_syscalls.h>
 
 
 struct cpu;

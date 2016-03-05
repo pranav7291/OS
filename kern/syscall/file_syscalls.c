@@ -1,9 +1,8 @@
-#include "../include/file_syscalls.h"
+#include <file_syscalls.h>
 
 #include <types.h>
 #include <clock.h>
 #include <copyinout.h>
-#include <syscall.h>
 #include <current.h>
 
 
@@ -18,7 +17,7 @@
  *
  *  eg: O_WRONLY|O_CREAT|O_TRUNC
  */
-int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int *retval) {
+int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int32_t *retval) {
 
 //call vfs_open
 //if error, handles
@@ -72,17 +71,17 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int *retval) 
 
 			//now create a filedesc structure
 
-			struct filedesc *filedesc;
-			filedesc=kmalloc(sizeof(*filedesc));
-			filedesc->fd_lock = lock_create(); 			//not sure when i should use this lock
-			filedesc->isempty = 1; //not empty
-			filedesc->fd_vnode = ret; //pointer to vnode object to be stored in filedesc->vnode
-			filedesc->flags = flags;
-			filedesc->read_count = 1;
+			struct filedesc *filedesc_ptr;
+			filedesc_ptr=kmalloc(sizeof(*filedesc_ptr));
+			filedesc_ptr->fd_lock = lock_create(); 			//not sure when i should use this lock
+			filedesc_ptr->isempty = 1; //not empty
+			filedesc_ptr->fd_vnode = ret; //pointer to vnode object to be stored in filedesc->vnode
+			filedesc_ptr->flags = flags;
+			filedesc_ptr->read_count = 1;
 
 
 			//make the thread->filedesc point to the filedesc
-			curthread->thread_filedesc= filedesc;
+			curthread->thread_filedesc= filedesc_ptr;
 
 			*retval = i;
 			break;

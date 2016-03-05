@@ -1,7 +1,5 @@
 #include <kern/fcntl.h>
 
-
-
 struct filedesc {
 	struct vnode *fd_vnode;
 	int fd_refcount;
@@ -19,13 +17,9 @@ struct filedesc {
  O_WRONLY		Open for writing only.
  O_RDWR		Open for reading and writing.
  */
-int
-sys_open(const char *filename, int flags, int *retval);
+int sys_open(userptr_t usr_ptr_filename, userptr_t usr_ptr_flags, int32_t *retval);
 
+int sys_close(int fd);
 
-int
-sys_close(int fd);
-
-ssize_t
-read(int fd, void *buf, size_t buflen);
+ssize_t read(int fd, void *buf, size_t buflen);
 
