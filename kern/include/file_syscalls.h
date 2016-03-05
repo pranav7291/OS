@@ -6,7 +6,7 @@ struct filedesc {
 	struct vnode *fd_vnode;
 	int fd_refcount;
 	int fd_count;
-	struct lock *fd_lock
+	struct lock *fd_lock;
 	char name[100];
 	int offset;
 	int isempty;
