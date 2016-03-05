@@ -106,7 +106,11 @@ struct thread {
 	 */
 
 	/* add more here as needed */
+
+	struct filedesc *fd;
 };
+
+
 
 /*
  * Array of threads.
