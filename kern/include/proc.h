@@ -71,6 +71,9 @@ struct proc {
 	struct vnode *p_cwd;		/* current working directory */
 
 	/* add more material here as needed */
+	struct filedesc thread_filedesc[50];
+	int count_filedesc;
+
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */

@@ -32,7 +32,7 @@
 #include <kern/syscall.h>
 #include <lib.h>
 #include <mips/trapframe.h>
-//#include <thread.h>
+#include <thread.h>
 #include <current.h>
 #include <syscall.h>
 #include <file_syscalls.h>
@@ -114,8 +114,8 @@ syscall(struct trapframe *tf)
 
 		//TODO sammok
 	case SYS_open :
-		err = sys_open((userptr_t)tf->tf_a0,
-				(userptr_t)tf->tf_a1, &retval)	;
+		err = sys_open((char*)tf->tf_a0,
+				(int)tf->tf_a1, &retval)	;
 		break;
 
 

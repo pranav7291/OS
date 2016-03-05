@@ -17,7 +17,7 @@
  *
  *  eg: O_WRONLY|O_CREAT|O_TRUNC
  */
-int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int32_t *retval) {
+int sys_open(char *filename, int flags, int32_t *retval) {
 
 //call vfs_open
 //if error, handles
@@ -30,7 +30,6 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int32_t *retv
 
 	char name[100];
 
-	int *flags;
 	int result;
 
 //	result = copyinstr(usr_ptr_flags, flags, sizeof(flags));
@@ -40,7 +39,7 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int32_t *retv
 //		return result;
 //	}
 
-	result = copyinstr(usr_ptr_filename, name, sizeof(name));
+	result = copyinstr(filename, name, sizeof(name));
 
 	if(result) { //memory problem
 		kprintf("\nSome memory problem, copyin fails when copy name %d\n", result);
@@ -49,7 +48,7 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int32_t *retv
 
 	struct vnode *ret; //empty nvnode
 
-	int returner = vfs_open(name, usr_ptr_flags, mode, &ret);
+	int returner = vfs_open(name, flags, mode, &ret);
 
 	if (returner==0) {
 		kprintf("successfully opened file %s\n", name);
@@ -60,10 +59,10 @@ int sys_open(userptr_t usr_ptr_filename, userptr_t  usr_ptr_flags, int32_t *retv
 
 		int inserted_flag = 0;
 		for(int i = 3; i<50; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
-			if(curthread->thread_filedesc[i]!=NULL) {
+			if(curproc->thread_filedesc[i]!=NULL) {
 				continue;
 			}
-			if(curthread->thread_filedesc[i]->isempty!=0) {
+			if(curproc->thread_filedesc[i]->isempty!=0) {
 				continue;
 			}
 
