@@ -113,4 +113,89 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 	return 0; //returns 0 if no error.
 }
 
+// added by pranavja
+int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+
+/*	Use VOP_WRITE with struct iovec and struct uio.
+	Init uio for write for user space buffers
+	uio->uio_segflg = UIO_USERSPACE
+	uio->uio_resid has bytes left after IO operation = len - uio->uio_resid
+*/
+	mode_t mode = 0664;
+
+//check if fd exists, otherwise return error
+
+	if (fd >= MAX_SIZE || fd < 0 ||
+				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
+				(curproc->proc_filedesc[fd]->flags & O_RDONLY == O_RDONLY) ) {
+		retval = EBADF;
+		return -1;
+	}
+
+	char *write_buf;
+
+	write_buf = kmalloc(sizeof(*buf)*size);
+	if (write_buf == NULL) {
+		retval = EINVAL;
+		return -1;
+	}
+
+	struct iovec iov;
+	struct uio uio;
+	struct vnode *vn;
+	int err;
+	int flags;
+	off_t pos=0;
+	int result;
+	int bytes_written = 0;
+
+	// write code for the various flags
+
+
+	//after the correct file handle has been found
+	/*
+	 * Initialize a uio suitable for I/O from a kernel buffer.
+	 *
+	 * Usage example;
+	 * 	char buf[128];
+	 * 	struct iovec iov;
+	 * 	struct uio myuio;
+	 *
+	 * 	uio_kinit(&iov, &myuio, buf, sizeof(buf), 0, UIO_READ);
+	 *      result = VOP_READ(vn, &myuio);
+	 *      ...
+	 */
+
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+
+	result = copyinstr((userptr_t)usr_ptr_buf, write_buf,size);
+
+	if(result) { //memory problem
+		kprintf("\nSome memory problem, copying fails trying to copy buf %d\n", result);
+		return -1;
+	}
+
+
+	uio_kinit(&iov, &uio, buf, sizeof(buf), pos, UIO_WRITE);
+	uio->uio_segflg = UIO_USERSPACE;
+
+	err = VOP_WRITE(curproc->filedesc[fd]->fd_vnode, &uio);
+
+	if (err) {
+		kprintf("%s: Write error: %s\n", name, strerror(err));
+		kfree(write_buf);
+		lock_release(curthread->t_proc->p_addrspace->filedesc[fd]->fd_lock);
+		return -1;
+		retval = err;
+	}
+
+	curcurthread->t_proc->p_addrspace->filedesc[fd]->offset = uio.uio_offset;
+
+	bytes_written = size - uio.uio_resid;
+	kfree(write_buf);
+	lock_release(curthread->t_proc->p_addrspace->filedesc[fd]->fd_lock);
+	//retval = bytes_written;
+	return bytes_written; //TODO handle returns. only specific returns possible
+}
+
 
