@@ -82,6 +82,11 @@ proc_create(const char *name)
 	/* VFS fields */
 	proc->p_cwd = NULL;
 
+//	proc->proc_filedesc=-1;
+
+for(int i =0; i<OPEN_MAX; i++) {
+	proc->proc_filedesc[i] = NULL;
+}
 	return proc;
 }
 

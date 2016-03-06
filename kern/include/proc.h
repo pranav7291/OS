@@ -38,6 +38,7 @@
 
 #include <spinlock.h>
 #include <file_syscalls.h>
+#include <limits.h>
 
 
 struct addrspace;
@@ -73,7 +74,7 @@ struct proc {
 	struct vnode *p_cwd;		/* current working directory */
 
 	/* add more material here as needed */
-	struct filedesc thread_filedesc[50];
+	struct filedesc *proc_filedesc[OPEN_MAX];
 	int count_filedesc;
 
 };

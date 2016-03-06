@@ -5,7 +5,7 @@ struct filedesc {
 	int fd_refcount;
 	int fd_count;
 	struct lock *fd_lock;
-	char name[100];
+	char *name;
 	int offset;
 	int isempty;
 	int flags;

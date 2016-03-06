@@ -30,6 +30,8 @@
 #ifndef _KERN_FCNTL_H_
 #define _KERN_FCNTL_H_
 
+#include <types.h>
+
 /*
  * Constants for libc's <fcntl.h>.
  */
@@ -77,8 +79,8 @@
 #define F_SETOWN        6       /* set process/pgroup for SIGURG and SIGIO */
 #define F_GETLK         7       /* inspect record locks */
 #define F_SETLK         8       /* acquire record locks nonblocking */
-
 #define F_SETLKW        9       /* acquire record locks and wait */
+
 /* flag for F_GETFD and F_SETFD */
 #define FD_CLOEXEC      1       /* close-on-exec */
 
