@@ -10,6 +10,9 @@
 #include <proc.h>
 #include <limits.h>
 #include <kern/errno.h>
+#include <kern/stat.h>
+#include <kern/iovec.h>
+#include <uio.h>
 
 
 /**
@@ -59,15 +62,16 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 	if (returner==0) {
 		kprintf("successfully opened file %s\n", name);
 
+		//first add the default fd's (0,1,2) to the file table because the kernel shouldn't have to open these
+
+
+
 		//add an fd to the list of fds in the thread's fd table
 
 		//iterate over all the fds to check if there is an fd number missing, insert the fd there
 
 		int inserted_flag = 0;
 		for (int i = 3; i < OPEN_MAX; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
-
-
-
 			if (curproc->proc_filedesc[i] != NULL) {
 				if (curproc->proc_filedesc[i]->isempty == 1) {
 					//it is empty, you can use this
@@ -93,6 +97,19 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			filedesc_ptr->read_count = 1;
 			filedesc_ptr->name = kstrdup(name);
 
+
+			if((flags & O_APPEND) == O_APPEND) {
+				kprintf("Opening in append mode\n");
+				struct stat *stat_obj;
+				stat_obj = kmalloc(sizeof(struct stat));
+				int vopstat_returner = VOP_STAT(ret, stat_obj);
+				if (vopstat_returner != 0) {
+					kprintf("vopstat_returner did not return 0, some error\n");
+				}
+				filedesc_ptr->offset = stat_obj->st_size;
+			} else {
+				filedesc_ptr->offset = 0;
+			}
 			//make the thread->filedesc point to the filedesc
 			curproc->proc_filedesc[i]= filedesc_ptr;
 
@@ -101,9 +118,10 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			break;
 		}
 		if(inserted_flag==0) {
-			*retval = EMFILE;
+			kprintf("Error! Out of file descriptors");
+//			*retval = EMFILE;
+			return EMFILE;
 		}
-
 	} else {
 		kprintf("some error in vfs_open()");
 	}
@@ -115,39 +133,47 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 
 // added by pranavja
 int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+	kprintf("Inside write with fd %d\n", fd);
 
 /*	Use VOP_WRITE with struct iovec and struct uio.
 	Init uio for write for user space buffers
 	uio->uio_segflg = UIO_USERSPACE
 	uio->uio_resid has bytes left after IO operation = len - uio->uio_resid
 */
-	mode_t mode = 0664;
-
 //check if fd exists, otherwise return error
 
-	if (fd >= MAX_SIZE || fd < 0 ||
+
+	if (fd >= OPEN_MAX || fd < 0 ||
 				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
-				(curproc->proc_filedesc[fd]->flags & O_RDONLY == O_RDONLY) ) {
-		retval = EBADF;
-		return -1;
+				(curproc->proc_filedesc[fd]->flags == O_RDONLY) ) {
+
+		if(curproc->proc_filedesc[fd]  == NULL ) {
+			kprintf("filedesc[fd] is null...\n");
+		} else if(curproc->proc_filedesc[fd]->isempty == 1) {
+			kprintf("is empty=1\n");
+		}else if((curproc->proc_filedesc[fd]->flags & O_RDONLY) == O_RDONLY) {
+			kprintf("is read only...\n");
+			kprintf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
+		}
+		kprintf("Some error, returning EBADF for fd=%d..\n",fd);
+		return EBADF;
 	}
+
+	kprintf("File descriptor %d exists in the file table. Yay.", fd );
 
 	char *write_buf;
 
 	write_buf = kmalloc(sizeof(*buf)*size);
 	if (write_buf == NULL) {
-		retval = EINVAL;
-		return -1;
+		return EINVAL;
 	}
 
 	struct iovec iov;
-	struct uio uio;
-	struct vnode *vn;
+	struct uio uio_obj;
 	int err;
-	int flags;
-	off_t pos=0;
+	off_t pos= curproc->proc_filedesc[fd]->offset;
 	int result;
-	int bytes_written = 0;
+
 
 	// write code for the various flags
 
@@ -168,34 +194,40 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
-	result = copyinstr((userptr_t)usr_ptr_buf, write_buf,size);
+	result = copyin((userptr_t)buf, write_buf,size);
 
 	if(result) { //memory problem
-		kprintf("\nSome memory problem, copying fails trying to copy buf %d\n", result);
-		return -1;
+		kprintf("\ncopyinstr failed with return code %d\n", result);
+
+		//free memory
+		kfree(write_buf);
+
+		//release the lock before returning error
+		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+
+		return EINVAL;
 	}
 
 
-	uio_kinit(&iov, &uio, buf, sizeof(buf), pos, UIO_WRITE);
-	uio->uio_segflg = UIO_USERSPACE;
+	uio_kinit(&iov, &uio_obj, write_buf, sizeof(write_buf), pos, UIO_WRITE);
+	uio_obj.uio_segflg = UIO_USERSPACE;
 
-	err = VOP_WRITE(curproc->filedesc[fd]->fd_vnode, &uio);
+	err = VOP_WRITE(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 
 	if (err) {
-		kprintf("%s: Write error: %s\n", name, strerror(err));
+		kprintf("%s: Write error: %s\n", curproc->proc_filedesc[fd]->name, strerror(err));
 		kfree(write_buf);
-		lock_release(curthread->t_proc->p_addrspace->filedesc[fd]->fd_lock);
-		return -1;
-		retval = err;
+		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		return err;
 	}
 
-	curcurthread->t_proc->p_addrspace->filedesc[fd]->offset = uio.uio_offset;
+	curproc->proc_filedesc[fd]->offset = uio_obj.uio_offset;
 
-	bytes_written = size - uio.uio_resid;
+	*retval = size - uio_obj.uio_resid;
+
 	kfree(write_buf);
-	lock_release(curthread->t_proc->p_addrspace->filedesc[fd]->fd_lock);
+	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 	//retval = bytes_written;
-	return bytes_written; //TODO handle returns. only specific returns possible
+	return 0; //TODO handle returns. only specific returns possible
 }
-
 
