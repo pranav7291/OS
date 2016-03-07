@@ -30,7 +30,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 //if error, handles
 
 	KASSERT(curthread->t_in_interrupt == false);
-	mode_t mode = 0664; //TODO Dunno what this means but whatever.
+	mode_t mode = 0664; // Dunno what this means but whatever.
 
 //	kprintf("\nin sys_open..\n");
 
@@ -91,7 +91,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			struct filedesc *filedesc_ptr;
 			filedesc_ptr = kmalloc(sizeof(*filedesc_ptr));
 			filedesc_ptr->fd_lock = lock_create(name); //not sure when i should use this lock
-			filedesc_ptr->isempty = 1; //not empty
+			filedesc_ptr->isempty = 0; //not empty
 			filedesc_ptr->fd_vnode = ret; //pointer to vnode object to be stored in filedesc->vnode
 			filedesc_ptr->flags = flags;
 			filedesc_ptr->read_count = 1;
@@ -145,17 +145,17 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 	if (fd >= OPEN_MAX || fd < 0 ||
 				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
-				(curproc->proc_filedesc[fd]->flags == O_RDONLY) ) {
-//
-//		if(curproc->proc_filedesc[fd]  == NULL ) {
-////			kprintf("filedesc[fd] is null...\n");
-//		} else if(curproc->proc_filedesc[fd]->isempty == 1) {
-////			kprintf("is empty=1\n");
-//		}else if((curproc->proc_filedesc[fd]->flags & O_RDONLY) == O_RDONLY) {
-////			kprintf("is read only...\n");
-////			kprintf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
-//		}
-//		kprintf("Some error, returning EBADF for fd=%d..\n",fd);
+				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
+
+		if(curproc->proc_filedesc[fd]  == NULL ) {
+			kprintf("filedesc[fd] is null...\n");
+		} else if(curproc->proc_filedesc[fd]->isempty == 1) {
+			kprintf("is empty=1\n");
+		}else if((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) {
+			kprintf("is read only...\n");
+			kprintf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
+		}
+		kprintf("Some error, returning EBADF for fd=%d..\n",fd);
 		return EBADF;
 	}
 
@@ -175,22 +175,9 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	int result;
 
 
-	// write code for the various flags
+	// todo write code for the various flags
 
 
-	//after the correct file handle has been found
-	/*
-	 * Initialize a uio suitable for I/O from a kernel buffer.
-	 *
-	 * Usage example;
-	 * 	char buf[128];
-	 * 	struct iovec iov;
-	 * 	struct uio myuio;
-	 *
-	 * 	uio_kinit(&iov, &myuio, buf, sizeof(buf), 0, UIO_READ);
-	 *      result = VOP_READ(vn, &myuio);
-	 *      ...
-	 */
 
 	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
@@ -215,11 +202,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 		return EINVAL;
 	}
 
-
-//	uio_kinit(&iov, &uio_obj, write_buf, sizeof(write_buf), pos, UIO_WRITE);
-//	uio_obj.uio_segflg = UIO_USERSPACE;
-//	uio_obj.uio_space = curproc->p_addrspace;
-
+	//copying code from load_elf.c
 	iov.iov_ubase = (userptr_t) buf;
 	iov.iov_len = size;
 	uio_obj.uio_iov = &iov;
@@ -249,7 +232,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	kfree(write_buf);
 	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 	//retval = bytes_written;
-	return 0; //TODO handle returns. only specific returns possible
+	return 0; //done: handle returns. only specific returns possible
 }
 
 int sys_close(int fd, ssize_t *retval) {
@@ -267,5 +250,53 @@ int sys_close(int fd, ssize_t *retval) {
 		*retval = 0;
 		return 0;
 	}
+}
+
+int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
+	//mostly same as sys_write kinda sorta
+
+	//same fd conditions
+	if (fd >= OPEN_MAX || fd < 0 ||
+				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
+				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_WRONLY)  ) {
+		return EBADF;
+	}
+
+	void *readbuf;
+
+	readbuf = kmalloc(sizeof(*buf) * buflen);
+	if (readbuf == NULL) {
+		return EINVAL;
+	}
+
+	struct iovec iov;
+	struct uio uio_obj;
+
+	//copying code from load_elf.c
+	iov.iov_ubase = (userptr_t) buf;
+	iov.iov_len = buflen;
+	uio_obj.uio_iov = &iov;
+	uio_obj.uio_iovcnt = 1;
+	off_t pos= curproc->proc_filedesc[fd]->offset;
+	uio_obj.uio_offset = pos;
+	uio_obj.uio_resid = buflen;
+	uio_obj.uio_segflg = UIO_USERSPACE;
+	uio_obj.uio_rw = UIO_READ;
+	uio_obj.uio_space = curproc->p_addrspace;
+
+	// todo write code for the various flags
+
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+	int err = VOP_READ(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
+	if(err) {
+		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		kfree(readbuf);
+		return EINVAL;
+	}
+	*retval = buflen - uio_obj.uio_resid;
+	lock_release(curproc->proc_filedesc[fd]->fd_lock);
+	kfree(readbuf);
+	return 0;
+
 }
 
