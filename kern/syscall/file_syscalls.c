@@ -161,7 +161,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 //	kprintf("File descriptor %d exists in the file table. Yay.", fd );
 
-	char *write_buf;
+	void *write_buf;
 
 	write_buf = kmalloc(sizeof(*buf)*size);
 	if (write_buf == NULL) {
@@ -196,8 +196,10 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 //	kprintf("the write buffer before copyin %s", buf);
 
+//	size_t got;
+//	result = copyinstr((const_userptr_t)buf, write_buf,size, &got);
 
-	result = copyinstr((const_userptr_t)buf, write_buf,size, NULL);
+	result = copyin((const_userptr_t)buf,write_buf,size);
 
 //	kprintf("the write buffer %s", write_buf);
 
@@ -214,9 +216,22 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	}
 
 
-	uio_kinit(&iov, &uio_obj, write_buf, sizeof(write_buf), pos, UIO_WRITE);
+//	uio_kinit(&iov, &uio_obj, write_buf, sizeof(write_buf), pos, UIO_WRITE);
 //	uio_obj.uio_segflg = UIO_USERSPACE;
 //	uio_obj.uio_space = curproc->p_addrspace;
+
+	iov.iov_ubase = (userptr_t) buf;
+	iov.iov_len = size;
+	uio_obj.uio_iov = &iov;
+	uio_obj.uio_iovcnt = 1;
+	uio_obj.uio_offset = pos;
+	uio_obj.uio_resid = size;
+	uio_obj.uio_segflg = UIO_USERSPACE;
+	uio_obj.uio_rw = UIO_WRITE;
+	uio_obj.uio_space = curproc->p_addrspace;
+
+
+
 
 	err = VOP_WRITE(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 
