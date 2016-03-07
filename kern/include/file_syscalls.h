@@ -19,7 +19,7 @@ struct filedesc {
  */
 int sys_open(char *filename, int flags, int32_t *retval);
 
-int sys_close(int fd);
+int sys_close(int fd, ssize_t *retval);
 
 ssize_t read(int fd, void *buf, size_t buflen);
 

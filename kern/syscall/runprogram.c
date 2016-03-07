@@ -109,6 +109,8 @@ runprogram(char *progname)
 	filedesc_ptr_in->isempty = 0; //not empty
 	filedesc_ptr_in->fd_vnode = ret_in; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_in->read_count = 1;
+	filedesc_ptr_in->offset = 0;
+
 
 
 	curproc->proc_filedesc[0] = filedesc_ptr_in;
@@ -135,6 +137,8 @@ runprogram(char *progname)
 	filedesc_ptr_out->isempty = 0; //not empty
 	filedesc_ptr_out->fd_vnode = ret_out; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_out->read_count = 1;
+	filedesc_ptr_out->offset = 0;
+
 
 
 
@@ -160,6 +164,7 @@ runprogram(char *progname)
 	filedesc_ptr_err->isempty = 0; //not empty
 	filedesc_ptr_err->fd_vnode = ret_err; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_err->read_count = 1;
+	filedesc_ptr_err->offset = 0;
 
 
 
@@ -170,13 +175,13 @@ runprogram(char *progname)
 
 //test what you entered in curproc.c
 
-kprintf("\n\ntesting curproc.c, checking if proc_filedesc[2] exists\n")	;
-
-	if(curproc->proc_filedesc[2] != NULL) {
-		kprintf("curproc exists with fd 2\n");
-	} else {
-		kprintf("curproc's fd does not exist \n");
-	}
+//kprintf("\n\ntesting curproc.c, checking if proc_filedesc[2] exists\n")	;
+//
+//	if(curproc->proc_filedesc[2] != NULL) {
+////		kprintf("curproc exists with fd 2\n");
+//	} else {
+//		kprintf("curproc's fd does not exist \n");
+//	}
 
 
 
@@ -206,8 +211,8 @@ kprintf("\n\ntesting curproc.c, checking if proc_filedesc[2] exists\n")	;
 
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
-	kprintf("process created, with name %s", curproc->p_name);
-	kprintf("\n\n\n***Exiting runprogram.c\n\n\n");
+//	kprintf("process created, with name %s", curproc->p_name);
+//	kprintf("\n\n\n***Exiting runprogram.c\n\n\n");
 
 	return EINVAL;
 }
