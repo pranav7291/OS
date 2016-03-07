@@ -129,8 +129,10 @@ syscall(struct trapframe *tf)
 	case SYS_read:
 		err= sys_read((int) tf->tf_a0, (char *) tf->tf_a1, (int) tf->tf_a2, &retval);
 			break;
+	case SYS_fork:
+		pid_t sys_fork(struct trapframe *tf, int *retval);
 
-
+		break;
 
 
 	default:

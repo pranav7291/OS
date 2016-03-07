@@ -76,6 +76,7 @@ struct proc {
 	/* add more material here as needed */
 	struct filedesc *proc_filedesc[OPEN_MAX];
 	int count_filedesc;
+	int pid;
 
 };
 
