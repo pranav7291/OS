@@ -115,6 +115,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 
 
 	newproc->pid = j;
+	newproc->parent_pid = curproc->pid;
 
 	p_table->pt_proc[j] = newproc;
 	if (newproc == NULL) {
@@ -132,15 +133,37 @@ int sys_fork(struct trapframe *tf, int *retval)  {
  * added by sammokka
  */
 int sys_getpid(int *retval) {
-
-
 	*retval = curproc->pid;
 	return 0;
 }
 
 
+/**added by sammokka
+ *
+ *
+ */
+pid_t
+waitpid(pid_t pid, int *status, int options, int *retval) {
+	if (pid == curproc->pid) {
+		return ECHILD;
+	}
 
 
+
+
+	if (p_table->pt_proc[pid] == NULL) {
+		//process does not exist (invalid pid)
+		*retval = -1;
+		return ESRCH;
+	}
+
+	if (p_table->pt_proc[pid]->isexited == true) {
+		*retval = pid;
+	}
+
+	//note: status CAN be null
+
+}
 
 
 
