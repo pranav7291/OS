@@ -44,6 +44,7 @@
 #include <vfs.h>
 #include <syscall.h>
 #include <test.h>
+#include <synch.h>
 
 /*
  * Load program "progname" and start running it in usermode.
@@ -54,6 +55,9 @@
 int
 runprogram(char *progname)
 {
+
+	kprintf("\n\n\n***Inside runprogram.c\n\n\n");
+
 	struct addrspace *as;
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;
@@ -78,6 +82,86 @@ runprogram(char *progname)
 	/* Switch to it and activate it. */
 	proc_setas(as);
 	as_activate();
+	//logic for creating console streams
+
+//console in
+
+	struct vnode *ret_in; //empty nvnode
+
+	struct filedesc *filedesc_ptr_in;
+	filedesc_ptr_in = kmalloc(sizeof(*filedesc_ptr_in));
+	mode_t mode = 0664;
+	filedesc_ptr_in->name = kstrdup("con:");
+	filedesc_ptr_in->flags = O_RDONLY;
+
+	int returner_in = vfs_open(filedesc_ptr_in->name, filedesc_ptr_in->flags, mode,
+			&ret_in);
+	if (returner_in) {
+		return returner_in;
+	}
+
+	filedesc_ptr_in->fd_lock = lock_create("con:input"); //not sure when i should use this lock
+	filedesc_ptr_in->isempty = 0; //not empty
+	filedesc_ptr_in->fd_vnode = ret_in; //pointer to vnode object to be stored in filedesc->vnode
+	filedesc_ptr_in->read_count = 1;
+	filedesc_ptr_in->offset = 0;
+
+
+
+	curproc->proc_filedesc[0] = filedesc_ptr_in;
+
+//output stream
+
+
+	struct vnode *ret_out; //empty nvnode
+
+	struct filedesc *filedesc_ptr_out;
+	mode = 0664;
+	filedesc_ptr_out = kmalloc(sizeof(*filedesc_ptr_out));
+	filedesc_ptr_out->flags = O_WRONLY;
+	filedesc_ptr_out->name = kstrdup("con:");
+
+	int returner_out = vfs_open(filedesc_ptr_out->name, filedesc_ptr_out->flags, mode,
+			&ret_out);
+
+	if (returner_out) {
+		return returner_out;
+	}
+
+	filedesc_ptr_out->fd_lock = lock_create("con:input"); //not sure when i should use this lock
+	filedesc_ptr_out->isempty = 0; //not empty
+	filedesc_ptr_out->fd_vnode = ret_out; //pointer to vnode object to be stored in filedesc->vnode
+	filedesc_ptr_out->read_count = 1;
+	filedesc_ptr_out->offset = 0;
+
+
+
+
+	curproc->proc_filedesc[1] = filedesc_ptr_out;
+
+//console err
+
+	struct vnode *ret_err; //empty nvnode
+
+	struct filedesc *filedesc_ptr_err;
+	mode = 0664;
+	filedesc_ptr_err = kmalloc(sizeof(*filedesc_ptr_err));
+	filedesc_ptr_err->flags = O_WRONLY;
+	filedesc_ptr_err->name = kstrdup("con:");
+
+	int returner_err = vfs_open(filedesc_ptr_err->name, filedesc_ptr_err->flags, mode,
+			&ret_err);
+	if (returner_err) {
+		return returner_err;
+	}
+
+	filedesc_ptr_err->fd_lock = lock_create("con:input"); //not sure when i should use this lock
+	filedesc_ptr_err->isempty = 0; //not empty
+	filedesc_ptr_err->fd_vnode = ret_err; //pointer to vnode object to be stored in filedesc->vnode
+	filedesc_ptr_err->read_count = 1;
+	filedesc_ptr_err->offset = 0;
+
+	curproc->proc_filedesc[2] = filedesc_ptr_err;
 
 	/* Load the executable. */
 	result = load_elf(v, &entrypoint);
@@ -104,6 +188,9 @@ runprogram(char *progname)
 
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
+//	kprintf("process created, with name %s", curproc->p_name);
+//	kprintf("\n\n\n***Exiting runprogram.c\n\n\n");
+
 	return EINVAL;
 }
 

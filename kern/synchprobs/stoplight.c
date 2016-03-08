@@ -73,8 +73,15 @@
  * Called by the driver during initialization.
  */
 
+struct lock *locks[4];
+
 void
 stoplight_init() {
+	//added by sammokka
+	locks[0] = lock_create("lock0");
+	locks[1] = lock_create("lock1");
+	locks[2] = lock_create("lock2");
+	locks[3] = lock_create("lock3");
 	return;
 }
 
@@ -83,36 +90,91 @@ stoplight_init() {
  */
 
 void stoplight_cleanup() {
+	//added by sammmokka
+	lock_destroy(locks[0]);
+	lock_destroy(locks[1]);
+	lock_destroy(locks[2]);
+	lock_destroy(locks[3]);
 	return;
 }
+
+
 
 void
 turnright(uint32_t direction, uint32_t index)
 {
-	(void)direction;
-	(void)index;
-	/*
-	 * Implement this function.
-	 */
+
+//	kprintf_n("printing ordering of direction (go right).. %d,\n",direction);
+
+	//added by sammokka
+	lock_acquire(locks[direction]);
+	inQuadrant(direction, index);
+
+	leaveIntersection(index);
+	lock_release(locks[direction]);
 	return;
 }
+
 void
 gostraight(uint32_t direction, uint32_t index)
 {
-	(void)direction;
-	(void)index;
-	/*
-	 * Implement this function.
-	 */
+	//added by sammokka
+	int a[2];
+	if( direction>(direction + 3) % 4) {
+		a[0]=(direction + 3) % 4;
+		a[1] = direction;
+	} else {
+		a[1]=(direction + 3) % 4;
+		a[0] = direction;
+	}
+//	kprintf_n("printing ordering of direction (go straight).. %d,%d\n",a[0],a[1]);
+
+
+	lock_acquire(locks[a[0]]);
+	lock_acquire(locks[a[1]]);
+	inQuadrant(direction, index);
+	inQuadrant((direction + 3) % 4, index);
+	leaveIntersection(index);
+	lock_release(locks[a[1]]);
+	lock_release(locks[a[0]]);
 	return;
 }
 void
-turnleft(uint32_t direction, uint32_t index)
-{
-	(void)direction;
-	(void)index;
-	/*
-	 * Implement this function.
-	 */
+turnleft(uint32_t direction, uint32_t index) {
+//added by sammmokka
+	int a[3];
+	a[0] = direction;
+	a[1] = (direction + 3) % 4;
+	a[2] = (direction + 2) % 4;
+
+
+	int swap = 0;
+//order a in increasing order
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			if (a[i] < a[j]) {
+				//swap a[i] and a[j]
+				swap = a[i];
+				a[i] = a[j];
+				a[j] = swap;
+			}
+		}
+	}
+//	kprintf_n("printing ordering of direction(go left).. %d,%d,%d\n",a[0],a[1],a[2]);
+
+	//added by sammokka
+	lock_acquire(locks[a[0]]);
+	lock_acquire(locks[a[1]]);
+	lock_acquire(locks[a[2]]);
+
+//	kprintf_n("Direction is.. %d\n",direction);
+	inQuadrant(direction, index);
+	inQuadrant((direction + 3) % 4, index);
+	inQuadrant((direction + 2) % 4, index);
+	leaveIntersection(index);
+	lock_release(locks[a[2]]);
+	lock_release(locks[a[1]]);
+	lock_release(locks[a[0]]);
 	return;
 }
+

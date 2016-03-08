@@ -74,8 +74,13 @@ void V(struct semaphore *);
  */
 struct lock {
         char *lk_name;
-        // add what you need here
+        // add what you need here TODO sammok
         // (don't forget to mark things volatile as needed)
+
+        bool lk_isLocked;; //0 for unlocked, 1 for locked.
+        struct wchan *lk_wchan;
+        struct spinlock lk_spinlock;
+        struct thread *holder;
 };
 
 struct lock *lock_create(const char *name);
@@ -114,6 +119,10 @@ bool lock_do_i_hold(struct lock *);
 struct cv {
         char *cv_name;
         // add what you need here
+		// added by pranavja
+		struct spinlock cv_spinlock;
+		struct wchan *cv_wchan;
+		struct lock *cv_lock;
         // (don't forget to mark things volatile as needed)
 };
 
@@ -149,6 +158,10 @@ void cv_broadcast(struct cv *cv, struct lock *lock);
 
 struct rwlock {
         char *rwlock_name;
+        struct lock *rwlock_lock;
+        //struct spinlock *rwlock_spinlock;
+        struct semaphore *rwlock_semaphore;
+//        int max_readers = 30;
         // add what you need here
         // (don't forget to mark things volatile as needed)
 };

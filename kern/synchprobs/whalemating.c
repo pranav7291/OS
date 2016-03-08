@@ -44,7 +44,21 @@
  * Called by the driver during initialization.
  */
 
+// Shared init variables
+// Added by pranavja
+static struct semaphore *female_sem;
+static struct semaphore *matchmaker_sem;
+
+// Added by pranavja
 void whalemating_init() {
+	female_sem = sem_create("female_sem", 0);
+		if (female_sem == NULL) {
+			panic("whalemating: female sem_create failed\n");
+		}
+	matchmaker_sem = sem_create("matchmaker_sem", 0);
+		if (matchmaker_sem == NULL) {
+			panic("whalemating: matchmaker sem_create failed\n");
+		}
 	return;
 }
 
@@ -54,28 +68,38 @@ void whalemating_init() {
 
 void
 whalemating_cleanup() {
+	sem_destroy(female_sem);
+	sem_destroy(matchmaker_sem);
 	return;
 }
 
 void
 male(uint32_t index)
 {
-	(void)index;
+	//(void)index;
 	/*
 	 * Implement this function by calling male_start and male_end when
 	 * appropriate.
 	 */
+	// Added by pranavja
+	male_start(index);
+	P(female_sem);
+	male_end(index);
 	return;
 }
 
 void
 female(uint32_t index)
 {
-	(void)index;
+	//(void)index;
 	/*
 	 * Implement this function by calling female_start and female_end when
 	 * appropriate.
 	 */
+	female_start(index);
+	P(matchmaker_sem);
+	female_end(index);
+
 	return;
 }
 
@@ -87,5 +111,10 @@ matchmaker(uint32_t index)
 	 * Implement this function by calling matchmaker_start and matchmaker_end
 	 * when appropriate.
 	 */
+	matchmaker_start(index);
+	matchmaker_end(index);
+	V(matchmaker_sem);
+	V(female_sem);
+
 	return;
 }

@@ -40,6 +40,7 @@
 #include <current.h>
 #include <synch.h>
 
+#define MAX_READERS 30 //added by Sammokka
 ////////////////////////////////////////////////////////////
 //
 // Semaphore.
@@ -138,6 +139,8 @@ V(struct semaphore *sem)
 //
 // Lock.
 
+
+
 struct lock *
 lock_create(const char *name)
 {
@@ -156,6 +159,19 @@ lock_create(const char *name)
 
 	// add stuff here as needed
 
+	lock->lk_wchan = wchan_create(lock->lk_name);
+
+//	if(lock->lk_wchan==NULL) {
+//		kfree(lock->lk_name);
+//		kfree(lock);
+//		return NULL;
+//	}
+
+	spinlock_init(&lock->lk_spinlock);
+	lock->lk_isLocked = false; //unlocked
+	lock->holder = NULL; //no thread is holding it right now.
+	//added - sammok
+
 	return lock;
 }
 
@@ -164,36 +180,60 @@ lock_destroy(struct lock *lock)
 {
 	KASSERT(lock != NULL);
 
-	// add stuff here as needed
+	// add stuff here as needed TODO Sammok
+
+
+	KASSERT(lock->holder==NULL); //assert that no thread is holding it
+
+	wchan_destroy(lock->lk_wchan);
 
 	kfree(lock->lk_name);
 	kfree(lock);
+
 }
 
 void
-lock_acquire(struct lock *lock)
-{
+lock_acquire(struct lock *lock) {
 	// Write this
 
-	(void)lock;  // suppress warning until code gets written
+	KASSERT(lock!=NULL);
+
+	//Adding - sammokka
+
+	KASSERT(curthread->t_in_interrupt == false);//check if it's not an interrrupt
+
+	spinlock_acquire(&lock->lk_spinlock);
+
+	//Keep looping until lock is unlocked
+	while (lock->lk_isLocked) {
+		wchan_sleep(lock->lk_wchan, &lock->lk_spinlock);
+	}
+	lock->lk_isLocked = true;
+	lock->holder = curthread;
+
+	spinlock_release(&lock->lk_spinlock);
 }
 
 void
-lock_release(struct lock *lock)
-{
-	// Write this
-
-	(void)lock;  // suppress warning until code gets written
+lock_release(struct lock *lock) {
+	//added by sammokka
+	KASSERT(lock!=NULL);
+	spinlock_acquire(&lock->lk_spinlock);
+	KASSERT(lock->lk_isLocked==true);
+	lock->lk_isLocked = false;
+	lock->holder = NULL;
+	wchan_wakeone(lock->lk_wchan, &lock->lk_spinlock);
+	spinlock_release(&lock->lk_spinlock);
 }
 
-bool
-lock_do_i_hold(struct lock *lock)
-{
+bool lock_do_i_hold(struct lock *lock) {
 	// Write this
-
-	(void)lock;  // suppress warning until code gets written
-
-	return true; // dummy until code gets written
+	KASSERT(lock!=NULL);
+	if (lock->holder == curthread) {
+		return true; // dummy until code gets written
+	} else {
+		return false;
+	}
 }
 
 ////////////////////////////////////////////////////////////
@@ -218,7 +258,17 @@ cv_create(const char *name)
 	}
 
 	// add stuff here as needed
+	// added by pranavja
 
+	cv->cv_wchan = wchan_create(cv->cv_name);
+	if (cv->cv_wchan == NULL) {
+		kfree(cv->cv_name);
+		kfree(cv);
+		return NULL;
+	}
+
+	spinlock_init(&cv->cv_spinlock);
+	
 	return cv;
 }
 
@@ -228,7 +278,10 @@ cv_destroy(struct cv *cv)
 	KASSERT(cv != NULL);
 
 	// add stuff here as needed
-
+	// added by pranavja
+	spinlock_cleanup(&cv->cv_spinlock);
+	wchan_destroy(cv->cv_wchan);
+	
 	kfree(cv->cv_name);
 	kfree(cv);
 }
@@ -237,22 +290,170 @@ void
 cv_wait(struct cv *cv, struct lock *lock)
 {
 	// Write this
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+	// added by pranavja
+	KASSERT(cv != NULL);
+	KASSERT(lock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);//check if it's not an interrrupt
+	KASSERT(lock_do_i_hold(lock));
+	
+	spinlock_acquire(&cv->cv_spinlock);
+	lock_release(lock);
+	wchan_sleep(cv->cv_wchan, &cv->cv_spinlock);
+	spinlock_release(&cv->cv_spinlock);
+	
+	lock_acquire(lock);
+	
+
+	//(void)cv;    // suppress warning until code gets written
+	//(void)lock;  // suppress warning until code gets written
 }
 
 void
 cv_signal(struct cv *cv, struct lock *lock)
 {
 	// Write this
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+	// added by pranavja
+	KASSERT(cv != NULL);
+	KASSERT(lock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);//check if it's not an interrrupt
+	KASSERT(lock_do_i_hold(lock));
+	spinlock_acquire(&cv->cv_spinlock);
+	
+	wchan_wakeone(cv->cv_wchan, &cv->cv_spinlock);
+	
+	spinlock_release(&cv->cv_spinlock);
+	//(void)cv;    // suppress warning until code gets written
+	//(void)lock;  // suppress warning until code gets written
 }
 
 void
 cv_broadcast(struct cv *cv, struct lock *lock)
 {
 	// Write this
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+	// added by pranavja
+	KASSERT(cv != NULL);
+	KASSERT(lock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);//check if it's not an interrrupt
+	KASSERT(lock_do_i_hold(lock));
+	spinlock_acquire(&cv->cv_spinlock);
+	
+	wchan_wakeall(cv->cv_wchan, &cv->cv_spinlock);
+	
+	spinlock_release(&cv->cv_spinlock);
+
+	//(void)cv;    // suppress warning until code gets written
+	//(void)lock;  // suppress warning until code gets written
 }
+
+
+struct rwlock* rwlock_create(const char* name) {
+
+	struct rwlock *rwlock;
+	rwlock = kmalloc(sizeof(*rwlock));
+	if (rwlock == NULL) {
+		return NULL;
+	}
+
+	rwlock->rwlock_name = kstrdup(name);
+	if (rwlock->rwlock_name == NULL) {
+		kfree(rwlock);
+		return NULL;
+	}
+
+	rwlock->rwlock_name = 	kstrdup(name);
+	rwlock->rwlock_lock = lock_create(rwlock->rwlock_name);
+	rwlock->rwlock_semaphore = sem_create(rwlock->rwlock_name, MAX_READERS);
+	return rwlock;
+
+}
+
+void rwlock_destroy(struct rwlock* rwlock) {
+	KASSERT(rwlock != NULL);
+	sem_destroy(rwlock->rwlock_semaphore);
+//	KASSERT(rwlock->rwlock_semaphore==NULL);
+	lock_destroy(rwlock->rwlock_lock);
+//	KASSERT(rwlock->rwlock_lock==NULL);
+	kfree(rwlock->rwlock_name);
+//	KASSERT(rwlock->rwlock_name==NULL);
+	kfree(rwlock);
+//	KASSERT(rwlock==NULL);
+}
+
+/**
+ * 	 For acquiring a read lock
+ * 	 1. acquire a lock
+ * 	 2. acquire the resource using p
+ * 	 3. release the lock
+ */
+void rwlock_acquire_read(struct rwlock *rwlock) {
+
+	//Sammokka
+	KASSERT(rwlock!=NULL);
+	KASSERT(rwlock->rwlock_lock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);
+
+	//acquire a lock --? what kind of lock? wher does this lock come from? i think spinlock.
+	//use rwlock->rwlock_spinlock? or rwlock->rwlock_sem->sem_spinlock?
+	lock_acquire(rwlock->rwlock_lock);
+	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
+
+	//acquire resource using p?
+	//using the semaphore?
+	P(rwlock->rwlock_semaphore);
+
+	//release the lock --> same as comment earlier
+	lock_release(rwlock->rwlock_lock);
+
+//	KASSERT(rwlock->rwlock_lock->lk_isLocked==false);
+
+}
+
+//release the resource using v
+void rwlock_release_read(struct rwlock *rwlock) {
+//	//Sammokka
+	KASSERT(rwlock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);
+	KASSERT(rwlock->rwlock_semaphore->sem_count<MAX_READERS);
+
+
+//	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
+	V(rwlock->rwlock_semaphore);
+}
+/**
+ * acquire the lock, P Max_reader types, release the lock
+ */
+void rwlock_acquire_write(struct rwlock *rwlock) {
+	//sammokka
+
+	KASSERT(rwlock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);
+
+
+
+	lock_acquire(rwlock->rwlock_lock);
+	KASSERT(rwlock->rwlock_lock->lk_isLocked==true);
+
+	for (int i = 0; i < MAX_READERS; i++) {
+		P(rwlock->rwlock_semaphore);
+	}
+	lock_release(rwlock->rwlock_lock);
+//	KASSERT(rwlock->rwlock_lock->lk_isLocked==false);
+}
+
+//release all resources
+void rwlock_release_write(struct rwlock *rwlock){
+	//sammokka
+
+	KASSERT(rwlock!=NULL);
+	KASSERT(curthread->t_in_interrupt == false);
+	KASSERT(rwlock->rwlock_semaphore->sem_count==0);
+
+
+	for (int i = 0; i < MAX_READERS; i++) {
+		V(rwlock->rwlock_semaphore);
+	}
+}
+
+
+
+

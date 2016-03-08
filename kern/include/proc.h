@@ -37,6 +37,9 @@
  */
 
 #include <spinlock.h>
+#include <file_syscalls.h>
+#include <limits.h>
+
 
 struct addrspace;
 struct thread;
@@ -71,6 +74,16 @@ struct proc {
 	struct vnode *p_cwd;		/* current working directory */
 
 	/* add more material here as needed */
+
+	//adding for files table
+	struct filedesc *proc_filedesc[OPEN_MAX];
+	int count_filedesc;
+
+	//adding for proc table
+	struct semaphore *proc_sem;
+	bool isexited;
+	pid_t parent_pid;
+	pid_t pid;
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */
