@@ -48,11 +48,16 @@
 #include <current.h>
 #include <addrspace.h>
 #include <vnode.h>
+#include <limits.h>
+#include <kern/proc_syscalls.h>
+#include <kern/errno.h>
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
  */
 struct proc *kproc;
+
+struct proc_table *p_table;
 
 /*
  * Create a proc structure.
@@ -82,12 +87,11 @@ proc_create(const char *name)
 	/* VFS fields */
 	proc->p_cwd = NULL;
 
-
 //	proc->proc_filedesc=-1;
 
-for(int i =0; i<OPEN_MAX; i++) {
-	proc->proc_filedesc[i] = NULL;
-}
+	for (int i = 0; i < OPEN_MAX; i++) {
+		proc->proc_filedesc[i] = NULL;
+	}
 	return proc;
 }
 
@@ -202,9 +206,9 @@ proc_create_runprogram(const char *name)
 	struct proc *newproc;
 
 	newproc = proc_create(name);
-	if (newproc == NULL) {
-		return NULL;
-	}
+
+
+
 
 	/* VM fields */
 

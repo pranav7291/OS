@@ -36,6 +36,8 @@
 #include <current.h>
 #include <syscall.h>
 #include <file_syscalls.h>
+#include <kern/proc_syscalls.h>
+
 
 
 /*
@@ -130,10 +132,12 @@ syscall(struct trapframe *tf)
 		err= sys_read((int) tf->tf_a0, (char *) tf->tf_a1, (int) tf->tf_a2, &retval);
 			break;
 	case SYS_fork:
-		pid_t sys_fork(struct trapframe *tf, int *retval);
-
+		err= sys_fork( tf, &retval);
 		break;
 
+	case SYS_getpid:
+			err= sys_getpid( &retval);
+			break;
 
 	default:
 		kprintf("Unknown syscall %d\n", callno);

@@ -82,11 +82,6 @@ runprogram(char *progname)
 	/* Switch to it and activate it. */
 	proc_setas(as);
 	as_activate();
-
-
-
-
-
 	//logic for creating console streams
 
 //console in
@@ -166,25 +161,7 @@ runprogram(char *progname)
 	filedesc_ptr_err->read_count = 1;
 	filedesc_ptr_err->offset = 0;
 
-
-
 	curproc->proc_filedesc[2] = filedesc_ptr_err;
-
-
-
-
-//test what you entered in curproc.c
-
-//kprintf("\n\ntesting curproc.c, checking if proc_filedesc[2] exists\n")	;
-//
-//	if(curproc->proc_filedesc[2] != NULL) {
-////		kprintf("curproc exists with fd 2\n");
-//	} else {
-//		kprintf("curproc's fd does not exist \n");
-//	}
-
-
-
 
 	/* Load the executable. */
 	result = load_elf(v, &entrypoint);
