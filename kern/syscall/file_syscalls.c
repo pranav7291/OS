@@ -338,15 +338,19 @@ off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *r
 	if (filehandle >= OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
 		return EBADF;
 	}
-//	if (code != SEEK_SET || code != SEEK_CUR || code != SEEK_END){
-//		return EINVAL;
-//	}
+
 	int result;
 	off_t offset;
 	off_t filesize;
 	struct stat file_stat;
 
 	lock_acquire(curproc->proc_filedesc[filehandle]->fd_lock);
+	result = VOP_ISSEEKABLE(curproc->proc_filedesc[filehandle]->fd_vnode);
+	if(!result){//file not seekable
+			lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
+			return result;
+	}
+
 	result = VOP_STAT(curproc->proc_filedesc[filehandle]->fd_vnode, &file_stat);
 	if(result){//VOP_STAT failed
 		lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
@@ -354,27 +358,12 @@ off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *r
 	}
 	filesize = file_stat.st_size;
 	if (code == SEEK_SET){//the new position is pos
-//		result = VOP_TRYSEEK(curproc->proc_filedesc[filehandle]->fd_vnode, pos);
-//		if(result){
-//			lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
-//			return result;
-//		}
 		offset = pos;
 	}
 	else if(code == SEEK_CUR){// the new position is the current position plus pos
-//		result = VOP_TRYSEEK(curproc->proc_filedesc[filehandle]->fd_vnode, pos + curproc->proc_filedesc[filehandle]->offset);
-//		if(result){
-//			lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
-//			return result;
-//		}
 		offset = pos + curproc->proc_filedesc[filehandle]->offset;
 	}
 	else if(code == SEEK_END){//the new position is the position of end-of-file plus pos
-//		result = VOP_TRYSEEK(curproc->proc_filedesc[filehandle]->fd_vnode, pos + filesize);
-//		if(result){
-//			lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
-//			return result;
-//		}
 		offset = pos + filesize;
 	}
 	else {
@@ -387,9 +376,9 @@ off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *r
 	}
 	curproc->proc_filedesc[filehandle]->offset = offset;
 
-	*retval = (uint32_t)((offset & 0xFFFFFFFF00000000) >> 32);
-	*retval2 = (uint32_t)(offset & 0xFFFFFFFF);
-
+	*retval = (offset & 0xFFFFFFFF00000000) >> 32;
+	*retval2 = offset & 0xFFFFFFFF;
+	lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
 	return 0;
 }
 

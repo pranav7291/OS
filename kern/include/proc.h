@@ -84,6 +84,7 @@ struct proc {
 	bool isexited;
 	pid_t parent_pid;
 	pid_t pid;
+	int exitcode;
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */
