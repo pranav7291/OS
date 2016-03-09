@@ -3,19 +3,24 @@
 
 #include <mips/trapframe.h>
 
-struct proc_table {
-	struct proc *pt_proc[__PID_MAX ];
-};
+extern struct proc *pt_proc[256];
 
-extern struct proc_table *p_table;
 
-int pt_init();
 
-int insert_process_into_file_table();
+extern struct lock *p_lock;
+
+
+void pt_init(void);
+
+pid_t insert_process_into_process_table(struct proc *newproc);
 
 void sys__exit(int exitcode);
-int pt_init();
 
 int sys_fork(struct trapframe *tf, int *retval);
 
 int sys_getpid(int *retval);
+
+pid_t
+sys_waitpid(pid_t pid, int *status, int options, int *retval);
+
+int sys_exit(pid_t pid);

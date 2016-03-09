@@ -15,35 +15,49 @@
 #include <addrspace.h>
 #include <mips/trapframe.h>
 #include <kern/proc_syscalls.h>
+#include <kern/wait.h>
 
-struct proc_table *p_table;
 
+//struct lock *p_lock;
 
-/*int pt_init() {
-	if (p_table == NULL) {
-		p_table = kmalloc(sizeof(p_table));
+struct proc *pt_proc[256];
+
+//initializes file table
+void pt_init() {
+	for (int i = 1; i < 256; i++) {
+		pt_proc[i]= NULL;
 	}
-	if (p_table->pt_proc == NULL) {
-		p_table->pt_proc = malloc(sizeof(p_table->pt_proc) * __PID_MAX);
-	}
-	return 0;
 }
-*
- * inserts process into file table, returns PID
 
-pid_t insert_process_into_file_table(struct proc *newproc) {
-	pid_t i = 0;
-	for (i = 0; i < __PID_MAX; i++) {
-		if (p_table->pt_proc[i] != NULL) {
-			continue;
-		} else {
-			p_table->pt_proc[i] = newproc;
+// inserts process into file table, returns PID
+
+pid_t insert_process_into_process_table(struct proc *newproc) {
+
+//	lock_acquire(p_lock);
+	pid_t i = 1;
+	for (i = 1; i < 256; i++) {
+		if (pt_proc[i] == NULL) {
+			kprintf("inserting process slot at pid->%d\n", i);
+			newproc->pid = i;
+			newproc->parent_pid = curproc->pid;
+			pt_proc[i] = newproc;
+			kprintf("mem of newproc %p, ", newproc );
+			kprintf("mem of pt_proc[i] %p\n",pt_proc[i] );
+			kprintf("pid of newproc %d, ", newproc->pid );
+			kprintf("pid of pt_proc[i] %d\n", pt_proc[i]->pid);
 			break;
 		}
 	}
-	return i;
 
-}*/
+//	lock_release(p_lock);
+	if (i == 256) {
+		kprintf("out of proc table slots!!\n");
+		return ENOMEM;
+	} else {
+		return i;
+	}
+}
+
 
 /**
  * sammmokka
@@ -74,7 +88,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	//create new thread
 
 	struct proc *newproc;
-	newproc = kmalloc(sizeof(*newproc));
+	newproc = proc_create_runprogram("name");
 
 	//Copy parent’s address space
 	struct addrspace * child_addr;
@@ -89,7 +103,11 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	//copy parents filetable entries
 	for (int k = 0; k < OPEN_MAX; k++) {
 		newproc->proc_filedesc[k] = curproc->proc_filedesc[k];
+		if (newproc->proc_filedesc[k]!=NULL) {
+			newproc->proc_filedesc[k]->fd_refcount++;
+		}
 	}
+	*retval = newproc->pid;
 
 	if(thread_fork("Child Thread", newproc,
 					entrypoint,  (void* ) tf_child,
@@ -97,32 +115,6 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 		return ENOMEM;
 	}
 
-	//sammokka
-	if (p_table == NULL) {
-		p_table = kmalloc(sizeof(p_table));
-	}
-
-	//find a null entry in p_table
-	int j = 1;
-	for (int j = 1; j < __PID_MAX; j++) {
-		if (p_table->pt_proc[j] == NULL) {
-			p_table->pt_proc[j] = kmalloc(sizeof(struct proc));
-			break; //j is the index of the null entry
-		}
-	}
-
-	//put the process in the file table, return pid.
-
-
-	newproc->pid = j;
-	newproc->parent_pid = curproc->pid;
-
-	p_table->pt_proc[j] = newproc;
-	if (newproc == NULL) {
-			return ENOMEM;
-		}
-
-	*retval = newproc->pid;
 
 	//sammokka end
 
@@ -143,55 +135,48 @@ int sys_getpid(int *retval) {
  *
  */
 pid_t
-waitpid(pid_t pid, int *status, int options, int *retval) {
+sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 	if (pid == curproc->pid) {
 		return ECHILD;
 	}
 
+	if(options!=0) {
+		return EINVAL;
+	}
 
-
-
-	if (p_table->pt_proc[pid] == NULL) {
+	if (pt_proc[pid] == NULL) {
 		//process does not exist (invalid pid)
 		*retval = -1;
 		return ESRCH;
 	}
 
-	if (p_table->pt_proc[pid]->isexited == true) {
+	if (pt_proc[pid]->isexited == true) {
 		*retval = pid;
 	}
+
+	if (pt_proc[pid]->isexited == false) {
+			V(pt_proc[pid]->proc_sem);
+	}
+
+	if(copyout((const void *) &(pt_proc[pid]->isexited), (userptr_t) status,
+				sizeof(int))) {
+		return EFAULT;
+	}
+	sem_destroy(pt_proc[pid]->proc_sem);
+	kfree(pt_proc[pid]->proc_sem);
+	kfree(pt_proc[pid]);
+	proc_destroy(pt_proc[pid]);
+
+	return 0;
 
 	//note: status CAN be null
 
 }
 
-
-
-/*
-
-void sys__exit(int exitcode) {
-	//kprintf("Child PID: %d, Parent PID %d\n",curthread->pid, curthread->ppid);
-
-	struct process_table_entry * temp1;
-	for(temp1=process_table; temp1->pid!=curthread->ppid || temp1 == NULL; temp1=temp1->next);
-
-	if (temp1 == NULL ) {
-		//destroy_process(curthread->pid);
-	} else if (temp1->procs->exited == false) {
-
-		struct process_table_entry * temp2;
-		for(temp2=process_table; temp2->pid!=curthread->pid || temp2==NULL; temp2=temp2->next);
-		if(temp2 == NULL){
-			kprintf("Process with PID %d not present in process table to exit/n",curthread->pid);
-		}
-		temp2->procs->exitcode = _MKWAIT_EXIT(exitcode);
-		//kprintf("Exitcode: %d\n",process_table[curthread->pid]->exitcode);
-		temp2->procs->exited = true;
-		V(temp2->procs->exitsem);
-	} else {
-		destroy_process(curthread->pid);
-	}
-
+int sys_exit(pid_t pid) {
+	pt_proc[pid]->isexited = true;
+	P(pt_proc[pid]->proc_sem);
+	curproc->exitcode = _MKWAIT_EXIT(pid);
 	thread_exit();
+	return 0;
 }
-*/

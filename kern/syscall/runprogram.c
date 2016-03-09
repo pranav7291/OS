@@ -133,10 +133,6 @@ runprogram(char *progname)
 	filedesc_ptr_out->fd_vnode = ret_out; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_out->read_count = 1;
 	filedesc_ptr_out->offset = 0;
-
-
-
-
 	curproc->proc_filedesc[1] = filedesc_ptr_out;
 
 //console err
