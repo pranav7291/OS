@@ -13,7 +13,12 @@
 #include <kern/stat.h>
 #include <kern/iovec.h>
 #include <uio.h>
-
+#include <syscall.h>
+#include <lib.h>
+#include <stdarg.h>
+#include <types.h>
+#include <kern/fcntl.h>
+#include <kern/seek.h>
 
 /**
  * Added by sammokka
@@ -29,7 +34,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 //call vfs_open
 //if error, handles
 
-	KASSERT(curthread->t_in_interrupt == false);
+	//KASSERT(curthread->t_in_interrupt == false);
 	mode_t mode = 0664; // Dunno what this means but whatever.
 
 //	kprintf("\nin sys_open..\n");
@@ -96,7 +101,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			filedesc_ptr->flags = flags;
 			filedesc_ptr->read_count = 1;
 			filedesc_ptr->name = kstrdup(name);
-
+			filedesc_ptr->fd_refcount = 1;
 
 			if((flags & O_APPEND) == O_APPEND) {
 //				kprintf("Opening in append mode\n");
@@ -130,6 +135,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 
 	return 0; //returns 0 if no error.
 }
+
 
 // added by pranavja
 int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
@@ -300,3 +306,154 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 
 }
 
+int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
+
+	if (filehandle >= OPEN_MAX || filehandle < 0 || newhandle >= OPEN_MAX || newhandle < 0 ||
+				curproc->proc_filedesc[filehandle]  == NULL ||
+				curproc->proc_filedesc[newhandle] != NULL) {
+		return EBADF;
+	}
+
+	curproc->proc_filedesc[newhandle] = (struct filedesc *)kmalloc(sizeof(struct filedesc *));
+
+	lock_acquire(curproc->proc_filedesc[filehandle]->fd_lock);
+
+	curproc->proc_filedesc[newhandle]->fd_vnode = curproc->proc_filedesc[filehandle]->fd_vnode;
+	curproc->proc_filedesc[newhandle]->fd_lock = lock_create("dup2 file lock");
+	curproc->proc_filedesc[newhandle]->isempty = curproc->proc_filedesc[newhandle]->isempty; //not empty
+	curproc->proc_filedesc[newhandle]->flags = curproc->proc_filedesc[filehandle]->flags;
+	curproc->proc_filedesc[newhandle]->offset = curproc->proc_filedesc[filehandle]->offset;
+	curproc->proc_filedesc[newhandle]->read_count = curproc->proc_filedesc[filehandle]->read_count;
+	strcpy(curproc->proc_filedesc[newhandle]->name, curproc->proc_filedesc[filehandle]->name);
+	curproc->proc_filedesc[newhandle]->fd_refcount = curproc->proc_filedesc[filehandle]->fd_refcount + 1;
+
+	lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
+
+	*retval = newhandle;
+	return 0;
+
+}
+
+off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *retval2){
+	if (filehandle >= OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
+		return EBADF;
+	}
+//	if (code != SEEK_SET || code != SEEK_CUR || code != SEEK_END){
+//		return EINVAL;
+//	}
+	int result;
+	off_t offset;
+	off_t filesize;
+	struct stat file_stat;
+
+	lock_acquire(curproc->proc_filedesc[filehandle]->fd_lock);
+	result = VOP_STAT(curproc->proc_filedesc[filehandle]->fd_vnode, &file_stat);
+	if(result){//VOP_STAT failed
+		lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
+		return result;
+	}
+	filesize = file_stat.st_size;
+	if (code == SEEK_SET){//the new position is pos
+//		result = VOP_TRYSEEK(curproc->proc_filedesc[filehandle]->fd_vnode, pos);
+//		if(result){
+//			lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
+//			return result;
+//		}
+		offset = pos;
+	}
+	else if(code == SEEK_CUR){// the new position is the current position plus pos
+//		result = VOP_TRYSEEK(curproc->proc_filedesc[filehandle]->fd_vnode, pos + curproc->proc_filedesc[filehandle]->offset);
+//		if(result){
+//			lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
+//			return result;
+//		}
+		offset = pos + curproc->proc_filedesc[filehandle]->offset;
+	}
+	else if(code == SEEK_END){//the new position is the position of end-of-file plus pos
+//		result = VOP_TRYSEEK(curproc->proc_filedesc[filehandle]->fd_vnode, pos + filesize);
+//		if(result){
+//			lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
+//			return result;
+//		}
+		offset = pos + filesize;
+	}
+	else {
+		lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
+		return EINVAL;
+	}
+	if (offset < (off_t) 0){
+		lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
+		return EINVAL;
+	}
+	curproc->proc_filedesc[filehandle]->offset = offset;
+
+	*retval = (uint32_t)((offset & 0xFFFFFFFF00000000) >> 32);
+	*retval2 = (uint32_t)(offset & 0xFFFFFFFF);
+
+	return 0;
+}
+
+int sys_chdir(const char *path){
+	int result;
+	char *path2;
+	size_t size;
+	path2 = (char *) kmalloc(sizeof(char)*PATH_MAX);
+
+	result = copyinstr((const_userptr_t)path, path2, PATH_MAX,&size);
+
+	if(result) {
+		kfree(path2);
+		return EFAULT;
+	}
+	result = vfs_chdir(path2);
+	if (result){
+		kfree(path2);
+		return result;
+	}
+	kfree(path2);
+	return 0;
+}
+
+int sys___getcwd(char *buf, size_t buflen, int *retval){
+
+	if (buf == NULL){
+		return EFAULT;
+	}
+	char *cwdbuf;
+	cwdbuf = kmalloc(sizeof(*buf) * buflen);
+	if (cwdbuf == NULL) {
+		return EINVAL;
+	}
+
+	int result;
+	size_t size;
+	result = copyinstr((const_userptr_t)buf, cwdbuf, PATH_MAX,&size);
+	if(result) {
+		kfree(cwdbuf);
+		return EFAULT;
+	}
+
+	struct iovec iov;
+	struct uio uio;
+
+	iov.iov_ubase = (userptr_t) buf;
+	iov.iov_len = buflen;
+	uio.uio_iov = &iov;
+	uio.uio_iovcnt = 1;
+	//off_t pos= curproc->proc_filedesc[fd]->offset;
+	uio.uio_offset = (off_t)0;
+	uio.uio_resid = buflen;
+	uio.uio_segflg = UIO_USERSPACE;
+	uio.uio_rw = UIO_READ;
+	uio.uio_space = curproc->p_addrspace;
+
+	result = vfs_getcwd(&uio);
+	if (result){
+		kfree(cwdbuf);
+		return result;
+	}
+	*retval = strlen(buf);
+
+	kfree(cwdbuf);
+	return 0;
+}

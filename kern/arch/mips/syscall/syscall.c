@@ -36,7 +36,7 @@
 #include <current.h>
 #include <syscall.h>
 #include <file_syscalls.h>
-#include <kern/proc_syscalls.h>
+#include <copyinout.h>
 
 
 
@@ -83,7 +83,10 @@ syscall(struct trapframe *tf)
 {
 	int callno;
 	int32_t retval;
+	int32_t retval2;
 	int err;
+	int code;
+	off_t pos;
 
 	KASSERT(curthread != NULL);
 	KASSERT(curthread->t_curspl == 0);
@@ -126,18 +129,35 @@ syscall(struct trapframe *tf)
 		break;
 
 	case SYS_close:
-			err= sys_close((int) tf->tf_a0,  &retval);
+		err= sys_close((int) tf->tf_a0,  &retval);
 			break;
 	case SYS_read:
 		err= sys_read((int) tf->tf_a0, (char *) tf->tf_a1, (int) tf->tf_a2, &retval);
 			break;
-	case SYS_fork:
-		err= sys_fork( tf, &retval);
+	case SYS_dup2:
+		err = sys_dup2((int) tf->tf_a0, (int) tf->tf_a1, &retval);
 		break;
-
-	case SYS_getpid:
-			err= sys_getpid( &retval);
+	case SYS_lseek:
+		pos = ((off_t)tf->tf_a2) << 32 | tf->tf_a3;
+		err = copyin((const_userptr_t)tf->tf_sp+16, &code, sizeof(int));
+		if(err) {
 			break;
+		}
+		err = sys_lseek(tf->tf_a0, pos, code, &retval, &retval2);
+		if(!err) {
+			tf->tf_v1 = retval2;
+		}
+		break;
+	case SYS_chdir:
+		err = sys_chdir((char *) tf->tf_a0);
+		break;
+	case SYS___getcwd:
+		err = sys___getcwd((char *) tf->tf_a0, (int) tf->tf_a1, &retval);
+	/*case SYS_fork:
+		pid_t sys_fork(struct trapframe *tf, int *retval);
+
+		break;
+	*/
 
 	default:
 		kprintf("Unknown syscall %d\n", callno);
