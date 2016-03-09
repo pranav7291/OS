@@ -65,6 +65,7 @@ static
 struct proc *
 proc_create(const char *name)
 {
+
 	struct proc *proc;
 
 	proc = kmalloc(sizeof(*proc));
@@ -91,6 +92,7 @@ proc_create(const char *name)
 	for (int i = 0; i < OPEN_MAX; i++) {
 		proc->proc_filedesc[i] = NULL;
 	}
+
 	return proc;
 }
 
@@ -187,15 +189,16 @@ proc_destroy(struct proc *proc)
 void
 proc_bootstrap(void)
 {
-
+//	kprintf("Booting.....");
 	kproc = proc_create("[kernel]");
 
 //	insert_process_into_process_table(kproc);
 	if (kproc == NULL) {
 		panic("proc_create for kproc failed\n");
 	}
-
 	pt_init();
+
+//	insert_process_into_process_table(kproc);
 
 }
 
@@ -212,14 +215,13 @@ proc_create_runprogram(const char *name) {
 
 	newproc = proc_create(name);
 
-
-	if (newproc == NULL) {
-		return NULL;
-	}
 	newproc->proc_sem = sem_create(name, 0);
 
 	insert_process_into_process_table(newproc);
 
+	if (newproc == NULL) {
+		return NULL;
+	}
 
 	/* VM fields */
 
