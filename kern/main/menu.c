@@ -807,7 +807,7 @@ menu(char *args)
 
 	menu_execute(args, 1);
 
-	while (1) {
+	//while (1) {
 		/*
 		 * Defined in overwrite.h. If you want to change the kernel prompt, please
 		 * do it in that file. Otherwise automated test testing will break.
@@ -815,5 +815,5 @@ menu(char *args)
 		kprintf(KERNEL_PROMPT);
 		kgets(buf, sizeof(buf));
 		menu_execute(buf, 0);
-	}
+	//}
 }

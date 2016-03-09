@@ -37,6 +37,7 @@
 #include <syscall.h>
 #include <file_syscalls.h>
 #include <copyinout.h>
+#include <kern/proc_syscalls.h>
 
 
 
@@ -153,6 +154,7 @@ syscall(struct trapframe *tf)
 		break;
 	case SYS___getcwd:
 		err = sys___getcwd((char *) tf->tf_a0, (int) tf->tf_a1, &retval);
+
 	case SYS_fork:
 		err= sys_fork( tf, &retval);
 		break;

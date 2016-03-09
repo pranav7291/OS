@@ -51,13 +51,12 @@
 #include <limits.h>
 #include <kern/proc_syscalls.h>
 #include <kern/errno.h>
+#include <synch.h>
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
  */
 struct proc *kproc;
-
-struct proc_table *p_table;
 
 /*
  * Create a proc structure.
@@ -182,16 +181,22 @@ proc_destroy(struct proc *proc)
 	kfree(proc);
 }
 
-/*
+/*`
  * Create the process structure for the kernel.
  */
 void
 proc_bootstrap(void)
 {
+
 	kproc = proc_create("[kernel]");
+
+//	insert_process_into_process_table(kproc);
 	if (kproc == NULL) {
 		panic("proc_create for kproc failed\n");
 	}
+
+	pt_init();
+
 }
 
 /*
@@ -201,13 +206,19 @@ proc_bootstrap(void)
  * process's (that is, the kernel menu's) current directory.
  */
 struct proc *
-proc_create_runprogram(const char *name)
-{
+proc_create_runprogram(const char *name) {
+
 	struct proc *newproc;
 
 	newproc = proc_create(name);
 
 
+	if (newproc == NULL) {
+		return NULL;
+	}
+	newproc->proc_sem = sem_create(name, 0);
+
+	insert_process_into_process_table(newproc);
 
 
 	/* VM fields */
