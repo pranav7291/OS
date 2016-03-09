@@ -1,4 +1,3 @@
-//#include <file_syscalls.h>
 
 #include <types.h>
 #include <clock.h>
@@ -35,7 +34,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 //	kprintf("\nin sys_open..\n");
 
 
-	char *name = kmalloc(sizeof(*filename));
+	char name[100];
 
 	int result;
 
@@ -96,7 +95,6 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			filedesc_ptr->flags = flags;
 			filedesc_ptr->read_count = 1;
 			filedesc_ptr->name = kstrdup(name);
-			filedesc_ptr->fd_refcount = 1;
 
 
 			if((flags & O_APPEND) == O_APPEND) {
@@ -121,7 +119,6 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 		if(inserted_flag==0) {
 //			kprintf("Error! Out of file descriptors");
 //			*retval = EMFILE;
-			kfree(name);
 			return EMFILE;
 		}
 	} else {
@@ -129,7 +126,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 	}
 
 //	kprintf("returning 0");
-	kfree(name);
+
 	return 0; //returns 0 if no error.
 }
 
@@ -246,7 +243,6 @@ int sys_close(int fd, ssize_t *retval) {
 	} else {
 		curproc->proc_filedesc[fd]->fd_refcount--;
 		if (curproc->proc_filedesc[fd]->fd_refcount == 0) {
-			vfs_close(curproc->proc_filedesc[fd]->fd_vnode);
 			kfree(curproc->proc_filedesc[fd]);
 			curproc->proc_filedesc[fd] = NULL;
 		}
@@ -302,4 +298,3 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	return 0;
 
 }
-
