@@ -46,6 +46,7 @@
 #include "opt-net.h"
 #include "opt-synchprobs.h"
 #include "opt-automationtest.h"
+#include <synch.h>
 
 /*
  * In-kernel menu and command dispatcher.
@@ -123,11 +124,13 @@ common_prog(int nargs, char **args)
 	if (proc == NULL) {
 		return ENOMEM;
 	}
-
+	struct semaphore *lockproc_sem = sem_create("hack", 1); //added pranavja
+	P(lockproc_sem);
 	result = thread_fork(args[0] /* thread name */,
 			proc /* new process */,
 			cmd_progthread /* thread function */,
 			args /* thread arg */, nargs /* thread arg */);
+	P(lockproc_sem);
 	if (result) {
 		kprintf("thread_fork failed: %s\n", strerror(result));
 		proc_destroy(proc);
@@ -807,7 +810,7 @@ menu(char *args)
 
 	menu_execute(args, 1);
 
-	//while (1) {
+	while (1) {
 		/*
 		 * Defined in overwrite.h. If you want to change the kernel prompt, please
 		 * do it in that file. Otherwise automated test testing will break.
@@ -815,5 +818,5 @@ menu(char *args)
 		kprintf(KERNEL_PROMPT);
 		kgets(buf, sizeof(buf));
 		menu_execute(buf, 0);
-	//}
+	}
 }
