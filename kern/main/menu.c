@@ -47,6 +47,7 @@
 #include "opt-synchprobs.h"
 #include "opt-automationtest.h"
 #include <synch.h>
+#include <kern/proc_syscalls.h>
 
 /*
  * In-kernel menu and command dispatcher.
@@ -98,6 +99,7 @@ cmd_progthread(void *ptr, unsigned long nargs)
 	}
 
 	/* NOTREACHED: runprogram only returns on error. */
+	sys_exit(0);
 }
 
 /*
@@ -124,13 +126,17 @@ common_prog(int nargs, char **args)
 	if (proc == NULL) {
 		return ENOMEM;
 	}
-	struct semaphore *lockproc_sem = sem_create("hack", 1); //added pranavja
-	P(lockproc_sem);
+	int32_t retval;
+	int status;
+	//struct semaphore *lockproc_sem = sem_create("hack", 0); //added pranavja
+	//P(lockproc_sem);
+
 	result = thread_fork(args[0] /* thread name */,
 			proc /* new process */,
 			cmd_progthread /* thread function */,
 			args /* thread arg */, nargs /* thread arg */);
-	P(lockproc_sem);
+	sys_waitpid(proc->pid, &status, 0, &retval);
+	//P(lockproc_sem);
 	if (result) {
 		kprintf("thread_fork failed: %s\n", strerror(result));
 		proc_destroy(proc);

@@ -131,6 +131,8 @@ dowait(int nowait, int pid)
 		exit(0);
 	}
 
+	nprintf("\nforktest: pid returned is : %d\n", pid);
+
 	if (!nowait) {
 		if (waitpid(pid, &x, 0)<0) {
 			errx(1, "waitpid");
