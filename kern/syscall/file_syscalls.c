@@ -18,7 +18,6 @@
 #include <kern/fcntl.h>
 #include <kern/seek.h>
 
-
 /**
  * Added by sammokka
  *  input:
@@ -38,15 +37,15 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 
 //	//printf("\nin sys_open..\n");
 
-
 	char name[100];
 
 	int result;
-	//added by pranavja
-//	if(!(flags==O_RDONLY || flags==O_WRONLY || flags==O_RDWR || flags==(O_RDWR|O_CREAT|O_TRUNC))) {
-//		return EINVAL;
-//	}
-	//end pranavja
+
+	int flag = flags && O_ACCMODE;
+	if (flag == O_RDONLY || flag == O_WRONLY || flag == O_RDWR) {
+	} else {
+		return EBADF;
+	}
 
 //	result = copyinstr(usr_ptr_flags, flags, sizeof(flags));
 
@@ -80,7 +79,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 		//iterate over all the fds to check if there is an fd number missing, insert the fd there
 
 		int inserted_flag = 0;
-		for (int i = 3; i < OPEN_MAX; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
+		for (int i = 3; i <= OPEN_MAX; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
 			if (curproc->proc_filedesc[i] != NULL) {
 				if (curproc->proc_filedesc[i]->isempty == 1) {
 					//it is empty, you can use this
@@ -152,15 +151,10 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 */
 //check if fd exists, otherwise return error
 
-//	size_t stoplen;
-//
-//	if (copycheck(buf, size, &stoplen)) {
-//		return EBADF;
-//	}
 
-	if (fd >= OPEN_MAX || fd < 0 ||
-			curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
-			((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
+	if (fd > OPEN_MAX || fd < 0 ||
+				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
+				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
 
 		if(curproc->proc_filedesc[fd]  == NULL ) {
 //			//printf("filedesc[fd] is null...\n");
@@ -271,7 +265,7 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	//mostly same as sys_write kinda sorta
 
 	//same fd conditions
-	if (fd >= OPEN_MAX || fd < 0 ||
+	if (fd > OPEN_MAX || fd < 0 ||
 				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
 				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_WRONLY)  ) {
 		return EBADF;
@@ -317,7 +311,7 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 
 int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 
-	if (filehandle >= OPEN_MAX || filehandle < 0 || newhandle >= OPEN_MAX || newhandle < 0 ||
+	if (filehandle > OPEN_MAX || filehandle < 0 || newhandle > OPEN_MAX || newhandle < 0 ||
 				curproc->proc_filedesc[filehandle]  == NULL ||
 				curproc->proc_filedesc[newhandle] != NULL) {
 		return EBADF;
@@ -344,7 +338,7 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 }
 
 off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *retval2){
-	if (filehandle >= OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
+	if (filehandle > OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
 		return EBADF;
 	}
 
