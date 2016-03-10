@@ -56,7 +56,7 @@ int
 runprogram(char *progname)
 {
 
-	kprintf("\n\n\n***Inside runprogram.c\n\n\n");
+//	kprintf("\n\n\n***Inside runprogram.c\n\n\n");
 
 	struct addrspace *as;
 	struct vnode *v;
