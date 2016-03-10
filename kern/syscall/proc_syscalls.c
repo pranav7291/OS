@@ -63,21 +63,19 @@ pid_t insert_process_into_process_table(struct proc *newproc) {
  */
 
 static void entrypoint(void* data1, unsigned long data2) {
-	struct trapframe *tf,  temptf;
-	struct addrspace * addr;
 
-	tf = (struct trapframe *) data1;
-	addr = (struct addrspace *) data2;
+	struct trapframe tf;
+	data2=data2+100;
 
-	tf->tf_a3 = 0;
-	tf->tf_v0 = 0;
-	tf->tf_epc += 4;
+	tf = *(struct trapframe *) data1;
 
-	curproc->p_addrspace = addr;
+	tf.tf_a3 = 0;
+	tf.tf_v0 = 0;
+	tf.tf_epc += 4;
+
+	kfree(data1);
 	as_activate();
-
-	temptf = *tf; //because apparently i  cant pass the direct pointer for some reason o.O
-	mips_usermode(&temptf);
+	mips_usermode(&tf);
 }
 
 
@@ -90,32 +88,34 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	newproc = proc_create_runprogram("name");
 
 	//Copy parent’s address space
-	struct addrspace * child_addr;
-	if (as_copy(curproc->p_addrspace, &child_addr)) {
+	if (as_copy(curproc->p_addrspace,&newproc->p_addrspace)) {
 		return ENOMEM;
 	}
 
 	//Copy parents trapframe
 	struct trapframe *tf_child = kmalloc(sizeof(struct trapframe));
 	*tf_child = *tf;
+	kprintf("tf_child mem -> %p\n", tf_child);
+	kprintf("tf mem -> %p\n", tf);
 
 	//copy parents filetable entries
 	for (int k = 0; k < OPEN_MAX; k++) {
-		newproc->proc_filedesc[k] = curproc->proc_filedesc[k];
-		if (newproc->proc_filedesc[k]!=NULL) {
+		if (curproc->proc_filedesc[k]!=NULL) {
+			newproc->proc_filedesc[k] = curproc->proc_filedesc[k];
 			newproc->proc_filedesc[k]->fd_refcount++;
 		}
 	}
 
+	*retval = newproc->pid;
+
 	if(thread_fork("Child Thread", newproc,
 					entrypoint,  (void* ) tf_child,
-					(unsigned long)child_addr)) {
+					(unsigned long)0)) {
 		return ENOMEM;
 	}
 
 	kprintf("forked to pid->%d", newproc->pid);
 
-	*retval = newproc->pid;
 
 	//sammokka end
 
@@ -172,11 +172,11 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 
 }
 
-int sys_exit(pid_t pid) {
-	kprintf("exiting process with pid %d", pid);
-	pt_proc[pid]->isexited = true;
-	V(pt_proc[pid]->proc_sem);
-	curproc->exitcode = _MKWAIT_EXIT(pid);
+int sys_exit(int code) {
+	kprintf("exiting ...");
+	curproc->isexited = true;
+	V(curproc->proc_sem);
+	curproc->exitcode = _MKWAIT_EXIT(code);
 	thread_exit();
 	return 0;
 }
