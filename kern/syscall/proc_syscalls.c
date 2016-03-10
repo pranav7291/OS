@@ -24,7 +24,7 @@ struct proc *pt_proc[256];
 
 //initializes file table
 void pt_init() {
-	kprintf("creating the proc table");
+	//kprintf("creating the proc table");
 	for (int i = 0; i < 256; i++) {
 		pt_proc[i]= NULL;
 	}
@@ -40,7 +40,7 @@ pid_t insert_process_into_process_table(struct proc *newproc) {
 	pid_t i = 1;
 	for (i = 1; i < 256; i++) {
 		if (pt_proc[i] == NULL) {
-			kprintf("inserting process slot at pid->%d\n", i);
+			//kprintf("inserting process slot at pid->%d\n", i);
 			newproc->pid = i;
 			newproc->parent_pid = curproc->pid;
 			pt_proc[i] = newproc;
@@ -50,7 +50,7 @@ pid_t insert_process_into_process_table(struct proc *newproc) {
 
 	lock_release(p_lock);
 	if (i == 256) {
-		kprintf("out of proc table slots!!\n");
+		//kprintf("out of proc table slots!!\n");
 		return ENOMEM;
 	} else {
 		return i;
@@ -95,8 +95,8 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	//Copy parents trapframe
 	struct trapframe *tf_child = kmalloc(sizeof(struct trapframe));
 	*tf_child = *tf;
-	kprintf("tf_child mem -> %p\n", tf_child);
-	kprintf("tf mem -> %p\n", tf);
+	//kprintf("tf_child mem -> %p\n", tf_child);
+	//kprintf("tf mem -> %p\n", tf);
 
 	//copy parents filetable entries
 	for (int k = 0; k < OPEN_MAX; k++) {
@@ -114,7 +114,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 		return ENOMEM;
 	}
 
-	kprintf("forked to pid->%d", newproc->pid);
+	//kprintf("forked to pid->%d", newproc->pid);
 
 	//sammokka end
 
@@ -172,7 +172,7 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 }
 
 int sys_exit(int code) {
-	kprintf("exiting ...");
+	//kprintf("exiting ...");
 	curproc->isexited = true;
 	V(curproc->proc_sem);
 	curproc->exitcode = _MKWAIT_EXIT(code);
