@@ -18,6 +18,7 @@
 #include <kern/fcntl.h>
 #include <kern/seek.h>
 
+
 /**
  * Added by sammokka
  *  input:
@@ -41,6 +42,11 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 	char name[100];
 
 	int result;
+	//added by pranavja
+//	if(!(flags==O_RDONLY || flags==O_WRONLY || flags==O_RDWR || flags==(O_RDWR|O_CREAT|O_TRUNC))) {
+//		return EINVAL;
+//	}
+	//end pranavja
 
 //	result = copyinstr(usr_ptr_flags, flags, sizeof(flags));
 
@@ -146,10 +152,15 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 */
 //check if fd exists, otherwise return error
 
+//	size_t stoplen;
+//
+//	if (copycheck(buf, size, &stoplen)) {
+//		return EBADF;
+//	}
 
 	if (fd >= OPEN_MAX || fd < 0 ||
-				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
-				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
+			curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
+			((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
 
 		if(curproc->proc_filedesc[fd]  == NULL ) {
 //			//printf("filedesc[fd] is null...\n");
