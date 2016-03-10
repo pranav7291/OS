@@ -87,7 +87,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	struct proc *newproc;
 	newproc = proc_create_runprogram("name");
 
-	//Copy parent’s address space
+	//Copy parentï¿½s address space
 	if (as_copy(curproc->p_addrspace,&newproc->p_addrspace)) {
 		return ENOMEM;
 	}
@@ -115,7 +115,6 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	}
 
 	kprintf("forked to pid->%d", newproc->pid);
-
 
 	//sammokka end
 
