@@ -157,6 +157,8 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 //check if fd exists, otherwise return error
 
 
+	//dummy comment for git test
+
 	if (fd > OPEN_MAX || fd < 0 ||
 				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
 				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
