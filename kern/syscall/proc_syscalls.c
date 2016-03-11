@@ -172,6 +172,8 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 
 	//note: status CAN be null
 
+	//hello
+
 }
 
 int sys_exit(int code) {
