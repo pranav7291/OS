@@ -119,7 +119,9 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 				filedesc_ptr->offset = 0;
 			}
 			//make the thread->filedesc point to the filedesc
+			lock_acquire(filedesc_ptr->fd_lock);
 			curproc->proc_filedesc[i]= filedesc_ptr;
+			lock_release(curproc->proc_filedesc[i]->fd_lock);
 
 			*retval = i;	//store the value returned by vfs_open to retval
 			inserted_flag = 1;
@@ -142,6 +144,9 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 
 // added by pranavja
 int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+
 //	//printf("Inside write with fd %d\n", fd);
 
 /*	Use VOP_WRITE with struct iovec and struct uio.
@@ -164,6 +169,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 			//printf("is read only...\n");
 			//printf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
 		}
+		lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		//printf("Some error, returning EBADF for fd=%d..\n",fd);
 		return EBADF;
 	}
@@ -174,6 +180,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 	write_buf = kmalloc(sizeof(*buf)*size);
 	if (write_buf == NULL) {
+		lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		return EINVAL;
 	}
 
@@ -188,7 +195,6 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 
 
-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
 //	//printf("the write buffer before copyin %s", buf);
 
@@ -247,12 +253,15 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 int sys_close(int fd, ssize_t *retval) {
 //	//printf("In close");
 
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 	if(curproc->proc_filedesc[fd]==NULL) {
 		//printf("fd does not exist.");
 		return EBADF;
 	} else {
 		curproc->proc_filedesc[fd]->fd_refcount--;
 		if (curproc->proc_filedesc[fd]->fd_refcount == 0) {
+			lock_release(curproc->proc_filedesc[fd]->fd_lock);
+			lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
 			kfree(curproc->proc_filedesc[fd]);
 			curproc->proc_filedesc[fd] = NULL;
 		}
@@ -323,7 +332,7 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 
 	curproc->proc_filedesc[newhandle]->fd_vnode = curproc->proc_filedesc[filehandle]->fd_vnode;
 	curproc->proc_filedesc[newhandle]->fd_lock = lock_create("dup2 file lock");
-	curproc->proc_filedesc[newhandle]->isempty = curproc->proc_filedesc[newhandle]->isempty; //not empty
+	curproc->proc_filedesc[newhandle]->isempty = curproc->proc_filedesc[filehandle]->isempty; //not empty
 	curproc->proc_filedesc[newhandle]->flags = curproc->proc_filedesc[filehandle]->flags;
 	curproc->proc_filedesc[newhandle]->offset = curproc->proc_filedesc[filehandle]->offset;
 	curproc->proc_filedesc[newhandle]->read_count = curproc->proc_filedesc[filehandle]->read_count;
