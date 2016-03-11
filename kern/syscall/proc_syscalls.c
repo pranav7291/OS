@@ -101,8 +101,11 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	//copy parents filetable entries
 	for (int k = 0; k < OPEN_MAX; k++) {
 		if (curproc->proc_filedesc[k]!=NULL) {
+			lock_acquire(curproc->proc_filedesc[k]->fd_lock);
 			newproc->proc_filedesc[k] = curproc->proc_filedesc[k];
 			newproc->proc_filedesc[k]->fd_refcount++;
+			lock_release(curproc->proc_filedesc[k]->fd_lock);
+
 		}
 	}
 
