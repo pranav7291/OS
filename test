@@ -1,0 +1,558 @@
+diff --git a/kern/include/copyinout.h b/kern/include/copyinout.h
+index 4de1623..b6f312b 100644
+--- a/kern/include/copyinout.h
++++ b/kern/include/copyinout.h
+@@ -68,9 +68,6 @@ int copyin(const_userptr_t usersrc, void *dest, size_t len);
+ int copyout(const void *src, userptr_t userdest, size_t len);
+ int copyinstr(const_userptr_t usersrc, char *dest, size_t len, size_t *got);
+ int copyoutstr(const char *src, userptr_t userdest, size_t len, size_t *got);
+-//added by pranavja
+-int
+-copycheck(const_userptr_t userptr, size_t len, size_t *stoplen);
+ 
+ 
+ #endif /* _COPYINOUT_H_ */
+diff --git a/kern/include/kern/fcntl.h b/kern/include/kern/fcntl.h
+index e2a9340..c3379a1 100644
+--- a/kern/include/kern/fcntl.h
++++ b/kern/include/kern/fcntl.h
+@@ -30,7 +30,7 @@
+ #ifndef _KERN_FCNTL_H_
+ #define _KERN_FCNTL_H_
+ 
+-//#include <types.h>
++#include <types.h>
+ 
+ /*
+  * Constants for libc's <fcntl.h>.
+diff --git a/kern/include/lib.h b/kern/include/lib.h
+index 5374a96..498ec28 100644
+--- a/kern/include/lib.h
++++ b/kern/include/lib.h
+@@ -130,7 +130,6 @@ void *kmalloc(size_t size);
+ void kfree(void *ptr);
+ void kheap_printstats(void);
+ void kheap_printused(void);
+-unsigned long kheap_getused(void);
+ void kheap_nextgeneration(void);
+ void kheap_dump(void);
+ void kheap_dumpall(void);
+diff --git a/kern/syscall/file_syscalls.c b/kern/syscall/file_syscalls.c
+index 63257d9..8f9bfb0 100644
+--- a/kern/syscall/file_syscalls.c
++++ b/kern/syscall/file_syscalls.c
+@@ -37,16 +37,11 @@ int sys_open(char *filename, int flags, int32_t *retval) {
+ 
+ //	//printf("\nin sys_open..\n");
+ 
++
+ 	char name[100];
+ 
+ 	int result;
+ 
+-	int flag = flags && O_ACCMODE;
+-	if (flag == O_RDONLY || flag == O_WRONLY || flag == O_RDWR) {
+-	} else {
+-		return EBADF;
+-	}
+-
+ //	result = copyinstr(usr_ptr_flags, flags, sizeof(flags));
+ 
+ //	if(result) { //memory problem
+@@ -79,7 +74,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
+ 		//iterate over all the fds to check if there is an fd number missing, insert the fd there
+ 
+ 		int inserted_flag = 0;
+-		for (int i = 3; i <= OPEN_MAX; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
++		for (int i = 3; i < OPEN_MAX; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
+ 			if (curproc->proc_filedesc[i] != NULL) {
+ 				if (curproc->proc_filedesc[i]->isempty == 1) {
+ 					//it is empty, you can use this
+@@ -119,9 +114,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
+ 				filedesc_ptr->offset = 0;
+ 			}
+ 			//make the thread->filedesc point to the filedesc
+-			lock_acquire(filedesc_ptr->fd_lock);
+ 			curproc->proc_filedesc[i]= filedesc_ptr;
+-			lock_release(curproc->proc_filedesc[i]->fd_lock);
+ 
+ 			*retval = i;	//store the value returned by vfs_open to retval
+ 			inserted_flag = 1;
+@@ -144,9 +137,6 @@ int sys_open(char *filename, int flags, int32_t *retval) {
+ 
+ // added by pranavja
+ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+-
+-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+-
+ //	//printf("Inside write with fd %d\n", fd);
+ 
+ /*	Use VOP_WRITE with struct iovec and struct uio.
+@@ -157,9 +147,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+ //check if fd exists, otherwise return error
+ 
+ 
+-	//dummy comment for git test
+-
+-	if (fd > OPEN_MAX || fd < 0 ||
++	if (fd >= OPEN_MAX || fd < 0 ||
+ 				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
+ 				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
+ 
+@@ -171,7 +159,6 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+ 			//printf("is read only...\n");
+ 			//printf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
+ 		}
+-		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+ 		//printf("Some error, returning EBADF for fd=%d..\n",fd);
+ 		return EBADF;
+ 	}
+@@ -182,7 +169,6 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+ 
+ 	write_buf = kmalloc(sizeof(*buf)*size);
+ 	if (write_buf == NULL) {
+-		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+ 		return EINVAL;
+ 	}
+ 
+@@ -197,6 +183,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+ 
+ 
+ 
++	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+ 
+ //	//printf("the write buffer before copyin %s", buf);
+ 
+@@ -255,15 +242,12 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+ int sys_close(int fd, ssize_t *retval) {
+ //	//printf("In close");
+ 
+-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+ 	if(curproc->proc_filedesc[fd]==NULL) {
+ 		//printf("fd does not exist.");
+ 		return EBADF;
+ 	} else {
+ 		curproc->proc_filedesc[fd]->fd_refcount--;
+ 		if (curproc->proc_filedesc[fd]->fd_refcount == 0) {
+-			lock_release(curproc->proc_filedesc[fd]->fd_lock);
+-			lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
+ 			kfree(curproc->proc_filedesc[fd]);
+ 			curproc->proc_filedesc[fd] = NULL;
+ 		}
+@@ -276,7 +260,7 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
+ 	//mostly same as sys_write kinda sorta
+ 
+ 	//same fd conditions
+-	if (fd > OPEN_MAX || fd < 0 ||
++	if (fd >= OPEN_MAX || fd < 0 ||
+ 				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
+ 				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_WRONLY)  ) {
+ 		return EBADF;
+@@ -322,7 +306,7 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
+ 
+ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
+ 
+-	if (filehandle > OPEN_MAX || filehandle < 0 || newhandle > OPEN_MAX || newhandle < 0 ||
++	if (filehandle >= OPEN_MAX || filehandle < 0 || newhandle >= OPEN_MAX || newhandle < 0 ||
+ 				curproc->proc_filedesc[filehandle]  == NULL ||
+ 				curproc->proc_filedesc[newhandle] != NULL) {
+ 		return EBADF;
+@@ -334,7 +318,7 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
+ 
+ 	curproc->proc_filedesc[newhandle]->fd_vnode = curproc->proc_filedesc[filehandle]->fd_vnode;
+ 	curproc->proc_filedesc[newhandle]->fd_lock = lock_create("dup2 file lock");
+-	curproc->proc_filedesc[newhandle]->isempty = curproc->proc_filedesc[filehandle]->isempty; //not empty
++	curproc->proc_filedesc[newhandle]->isempty = curproc->proc_filedesc[newhandle]->isempty; //not empty
+ 	curproc->proc_filedesc[newhandle]->flags = curproc->proc_filedesc[filehandle]->flags;
+ 	curproc->proc_filedesc[newhandle]->offset = curproc->proc_filedesc[filehandle]->offset;
+ 	curproc->proc_filedesc[newhandle]->read_count = curproc->proc_filedesc[filehandle]->read_count;
+@@ -349,7 +333,7 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
+ }
+ 
+ off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *retval2){
+-	if (filehandle > OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
++	if (filehandle >= OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
+ 		return EBADF;
+ 	}
+ 
+diff --git a/kern/syscall/proc_syscalls.c b/kern/syscall/proc_syscalls.c
+index e5c99bc..0de4336 100644
+--- a/kern/syscall/proc_syscalls.c
++++ b/kern/syscall/proc_syscalls.c
+@@ -24,7 +24,7 @@ struct proc *pt_proc[256];
+ 
+ //initializes file table
+ void pt_init() {
+-	//kprintf("creating the proc table");
++	kprintf("creating the proc table");
+ 	for (int i = 0; i < 256; i++) {
+ 		pt_proc[i]= NULL;
+ 	}
+@@ -40,7 +40,7 @@ pid_t insert_process_into_process_table(struct proc *newproc) {
+ 	pid_t i = 1;
+ 	for (i = 1; i < 256; i++) {
+ 		if (pt_proc[i] == NULL) {
+-			//kprintf("inserting process slot at pid->%d\n", i);
++			kprintf("inserting process slot at pid->%d\n", i);
+ 			newproc->pid = i;
+ 			newproc->parent_pid = curproc->pid;
+ 			pt_proc[i] = newproc;
+@@ -50,7 +50,7 @@ pid_t insert_process_into_process_table(struct proc *newproc) {
+ 
+ 	lock_release(p_lock);
+ 	if (i == 256) {
+-		//kprintf("out of proc table slots!!\n");
++		kprintf("out of proc table slots!!\n");
+ 		return ENOMEM;
+ 	} else {
+ 		return i;
+@@ -87,7 +87,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
+ 	struct proc *newproc;
+ 	newproc = proc_create_runprogram("name");
+ 
+-	//Copy parentï¿½s address space
++	//Copy parent’s address space
+ 	if (as_copy(curproc->p_addrspace,&newproc->p_addrspace)) {
+ 		return ENOMEM;
+ 	}
+@@ -95,17 +95,14 @@ int sys_fork(struct trapframe *tf, int *retval)  {
+ 	//Copy parents trapframe
+ 	struct trapframe *tf_child = kmalloc(sizeof(struct trapframe));
+ 	*tf_child = *tf;
+-	//kprintf("tf_child mem -> %p\n", tf_child);
+-	//kprintf("tf mem -> %p\n", tf);
++	kprintf("tf_child mem -> %p\n", tf_child);
++	kprintf("tf mem -> %p\n", tf);
+ 
+ 	//copy parents filetable entries
+ 	for (int k = 0; k < OPEN_MAX; k++) {
+ 		if (curproc->proc_filedesc[k]!=NULL) {
+-			lock_acquire(curproc->proc_filedesc[k]->fd_lock);
+ 			newproc->proc_filedesc[k] = curproc->proc_filedesc[k];
+ 			newproc->proc_filedesc[k]->fd_refcount++;
+-			lock_release(curproc->proc_filedesc[k]->fd_lock);
+-
+ 		}
+ 	}
+ 
+@@ -117,7 +114,8 @@ int sys_fork(struct trapframe *tf, int *retval)  {
+ 		return ENOMEM;
+ 	}
+ 
+-	//kprintf("forked to pid->%d", newproc->pid);
++	kprintf("forked to pid->%d", newproc->pid);
++
+ 
+ 	//sammokka end
+ 
+@@ -172,12 +170,10 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
+ 
+ 	//note: status CAN be null
+ 
+-	//hello
+-
+ }
+ 
+ int sys_exit(int code) {
+-	//kprintf("exiting ...");
++	kprintf("exiting ...");
+ 	curproc->isexited = true;
+ 	V(curproc->proc_sem);
+ 	curproc->exitcode = _MKWAIT_EXIT(code);
+diff --git a/kern/syscall/runprogram.c b/kern/syscall/runprogram.c
+index e8b827c..b7657d1 100644
+--- a/kern/syscall/runprogram.c
++++ b/kern/syscall/runprogram.c
+@@ -105,7 +105,6 @@ runprogram(char *progname)
+ 	filedesc_ptr_in->fd_vnode = ret_in; //pointer to vnode object to be stored in filedesc->vnode
+ 	filedesc_ptr_in->read_count = 1;
+ 	filedesc_ptr_in->offset = 0;
+-	filedesc_ptr_in->fd_refcount = 1;
+ 
+ 
+ 
+@@ -129,12 +128,11 @@ runprogram(char *progname)
+ 		return returner_out;
+ 	}
+ 
+-	filedesc_ptr_out->fd_lock = lock_create("con:output"); //not sure when i should use this lock
++	filedesc_ptr_out->fd_lock = lock_create("con:input"); //not sure when i should use this lock
+ 	filedesc_ptr_out->isempty = 0; //not empty
+ 	filedesc_ptr_out->fd_vnode = ret_out; //pointer to vnode object to be stored in filedesc->vnode
+ 	filedesc_ptr_out->read_count = 1;
+ 	filedesc_ptr_out->offset = 0;
+-	filedesc_ptr_out->fd_refcount = 1;
+ 	curproc->proc_filedesc[1] = filedesc_ptr_out;
+ 
+ //console err
+@@ -153,13 +151,11 @@ runprogram(char *progname)
+ 		return returner_err;
+ 	}
+ 
+-	filedesc_ptr_err->fd_lock = lock_create("con:error"); //not sure when i should use this lock
++	filedesc_ptr_err->fd_lock = lock_create("con:input"); //not sure when i should use this lock
+ 	filedesc_ptr_err->isempty = 0; //not empty
+ 	filedesc_ptr_err->fd_vnode = ret_err; //pointer to vnode object to be stored in filedesc->vnode
+ 	filedesc_ptr_err->read_count = 1;
+ 	filedesc_ptr_err->offset = 0;
+-	filedesc_ptr_err->fd_refcount = 1;
+-
+ 
+ 	curproc->proc_filedesc[2] = filedesc_ptr_err;
+ 
+diff --git a/kern/vm/copyinout.c b/kern/vm/copyinout.c
+index f946264..5ca1aa1 100644
+--- a/kern/vm/copyinout.c
++++ b/kern/vm/copyinout.c
+@@ -113,7 +113,7 @@ copyfail(void)
+  *
+  * Assumes userspace runs from 0 through USERSPACETOP-1.
+  */
+-//static
++static
+ int
+ copycheck(const_userptr_t userptr, size_t len, size_t *stoplen)
+ {
+diff --git a/kern/vm/kmalloc.c b/kern/vm/kmalloc.c
+index 7d7af76..b4c4f3a 100644
+--- a/kern/vm/kmalloc.c
++++ b/kern/vm/kmalloc.c
+@@ -819,17 +819,17 @@ kheap_printstats(void)
+ 	spinlock_release(&kmalloc_spinlock);
+ }
+ 
+-
+ /*
+- * Return the number of used bytes.
++ * Print number of used heap bytes.
+  */
+-
+-unsigned long
+-kheap_getused(void) {
++void
++kheap_printused(void)
++{
+ 	struct pageref *pr;
+ 	unsigned long total = 0;
++	char total_string[32];
+ 
+-	/* compute with interrupts off */
++	/* print the whole thing with interrupts off */
+ 	spinlock_acquire(&kmalloc_spinlock);
+ 	for (pr = allbase; pr != NULL; pr = pr->next_all) {
+ 		total += subpage_stats(pr, true);
+@@ -837,18 +837,7 @@ kheap_getused(void) {
+ 	total += coremap_used_bytes();
+ 	spinlock_release(&kmalloc_spinlock);
+ 
+-	return total;
+-}
+-
+-/*
+- * Print number of used bytes.
+- */
+-
+-void
+-kheap_printused(void)
+-{
+-	char total_string[32];
+-	snprintf(total_string, sizeof(total_string), "%lu", kheap_getused());
++	snprintf(total_string, sizeof(total_string), "%lu", total);
+ 	secprintf(SECRET, total_string, "khu");
+ }
+ 
+diff --git a/test161/tests/synch/cvt1.t b/test161/tests/synch/cvt1.t
+index 7777395..55e206d 100644
+--- a/test161/tests/synch/cvt1.t
++++ b/test161/tests/synch/cvt1.t
+@@ -2,11 +2,9 @@
+ name: "CV Test 1"
+ description:
+   Tests core CV functionality through cyclic waiting.
+-tags: [synch, cvs, kleaks]
++tags: [synch, cvs]
+ depends: [boot, semaphores, locks]
+ sys161:
+   cpus: 32
+ ---
+-khu
+ cvt1
+-khu
+diff --git a/test161/tests/synch/cvt2.t b/test161/tests/synch/cvt2.t
+index 95625c5..da00f74 100644
+--- a/test161/tests/synch/cvt2.t
++++ b/test161/tests/synch/cvt2.t
+@@ -3,11 +3,9 @@ name: "CV Test 2"
+ description:
+   Tests core CV functionality through a mixture of sleeping and waking
+   threads.
+-tags: [synch, cvs, kleaks]
++tags: [synch, cvs]
+ depends: [boot, semaphores, locks]
+ sys161:
+   cpus: 32
+ ---
+-khu
+ cvt2
+-khu
+diff --git a/test161/tests/synch/cvt5.t b/test161/tests/synch/cvt5.t
+index 09338fb..0a9cd48 100644
+--- a/test161/tests/synch/cvt5.t
++++ b/test161/tests/synch/cvt5.t
+@@ -1,12 +1,10 @@
+ ---
+ name: "CV Test 5"
+ description:
+-  Tests CV and lock relationship.
+-tags: [synch, cvs, kleaks]
++  Tests CV and location relationship.
++tags: [synch, cvs]
+ depends: [boot, locks]
+ sys161:
+   cpus: 32
+ ---
+-khu
+ cvt5
+-khu
+diff --git a/test161/tests/synch/lt1.t b/test161/tests/synch/lt1.t
+index e1528b9..a64df15 100644
+--- a/test161/tests/synch/lt1.t
++++ b/test161/tests/synch/lt1.t
+@@ -2,11 +2,9 @@
+ name: "Lock Test 1"
+ description:
+   Tests core lock functionality through modifications to shared state.
+-tags: [synch, locks, kleaks]
++tags: [synch, locks]
+ depends: [boot, semaphores]
+ sys161:
+   cpus: 32
+ ---
+-khu
+ lt1
+-khu
+diff --git a/test161/tests/synch/rwt1.t b/test161/tests/synch/rwt1.t
+index ef008e7..52c89d5 100644
+--- a/test161/tests/synch/rwt1.t
++++ b/test161/tests/synch/rwt1.t
+@@ -3,11 +3,9 @@ name: "RW Lock Test 1"
+ description:
+   Tests core reader-writer lock functionality by reading and writing shared
+   state.
+-tags: [synch, rwlocks, kleaks]
++tags: [synch, rwlocks]
+ depends: [boot, semaphores]
+ sys161:
+   cpus: 32
+ ---
+-khu
+ rwt1
+-khu
+diff --git a/test161/tests/synch/rwt2.t b/test161/tests/synch/rwt2.t
+index 2dbe216..cb2900a 100644
+--- a/test161/tests/synch/rwt2.t
++++ b/test161/tests/synch/rwt2.t
+@@ -3,11 +3,9 @@ name: "RW Lock Test 2"
+ description:
+   Tests that reader-writer locks allow maximum read concurrency when no
+   writers are waiting.
+-tags: [synch, rwlocks, kleaks]
++tags: [synch, rwlocks]
+ depends: [boot, semaphores, cvs]
+ sys161:
+   cpus: 32
+ ---
+-khu
+ rwt2
+-khu
+diff --git a/test161/tests/synch/sem1.t b/test161/tests/synch/sem1.t
+index 61a27e3..d8b0afc 100644
+--- a/test161/tests/synch/sem1.t
++++ b/test161/tests/synch/sem1.t
+@@ -2,11 +2,9 @@
+ name: "Semaphore Test"
+ description:
+   Tests core semaphore logic through cycling signaling.
+-tags: [synch, semaphores, kleaks]
++tags: [synch, semaphores]
+ depends: [boot]
+ sys161:
+   cpus: 32
+ ---
+-khu
+ sem1
+-khu
+diff --git a/test161/tests/synchprobs/sp1.t b/test161/tests/synchprobs/sp1.t
+index b3925ad..454add7 100644
+--- a/test161/tests/synchprobs/sp1.t
++++ b/test161/tests/synchprobs/sp1.t
+@@ -3,6 +3,4 @@ name: "Whalemating Test"
+ tags: [synchprobs]
+ depends: [boot, semaphores, locks]
+ ---
+-khu
+ sp1
+-khu
+diff --git a/test161/tests/synchprobs/sp2.t b/test161/tests/synchprobs/sp2.t
+index 9a53695..ca6e1ea 100644
+--- a/test161/tests/synchprobs/sp2.t
++++ b/test161/tests/synchprobs/sp2.t
+@@ -3,6 +3,4 @@ name: "Stoplight Test"
+ tags: [synchprobs]
+ depends: [boot, semaphores, locks, cvs]
+ ---
+-khu
+ sp2
+-khu
+diff --git a/userland/testbin/badcall/bad_execv.c b/userland/testbin/badcall/bad_execv.c
+index 0880e72..5551e9b 100644
+--- a/userland/testbin/badcall/bad_execv.c
++++ b/userland/testbin/badcall/bad_execv.c
+@@ -32,7 +32,6 @@
+  */
+ 
+ #include <sys/types.h>
+-#include <stdio.h>
+ #include <stdlib.h>
+ #include <unistd.h>
+ #include <errno.h>
+@@ -107,7 +106,8 @@ exec_badprog(const void *prog, const char *desc)
+ 	report_begin(desc);
+ 	rv = execv(prog, args);
+ 	result = report_check(rv, errno, EFAULT);
+-	int code = result ? result : MAGIC_STATUS;
++	//XXX: Make sure this doesn't interfere with SIGNALLED/EXITED
++	int code = MAGIC_STATUS | result;
+ 	exit(code);
+ }
+ 
+@@ -128,7 +128,8 @@ exec_emptyprog(void)
+ 	report_begin("exec the empty string");
+ 	rv = execv("", args);
+ 	result = report_check2(rv, errno, EINVAL, EISDIR);
+-	int code = result ? result : MAGIC_STATUS;
++	//XXX: Make sure this doesn't interfere with SIGNALLED/EXITED
++	int code = MAGIC_STATUS | result;
+ 	exit(code);
+ }
+ 
+@@ -145,7 +146,8 @@ exec_badargs(void *args, const char *desc)
+ 	report_begin(desc);
+ 	rv = execv("/bin/true", args);
+ 	result = report_check(rv, errno, EFAULT);
+-	int code = result ? result : MAGIC_STATUS;
++	//XXX: Make sure this doesn't interfere with SIGNALLED/EXITED
++	int code = MAGIC_STATUS | result;
+ 	exit(code);
+ }
+ 
+@@ -168,7 +170,8 @@ exec_onearg(void *ptr, const char *desc)
+ 	report_begin(desc);
+ 	rv = execv("/bin/true", args);
+ 	result = report_check(rv, errno, EFAULT);
+-	int code = result ? result : MAGIC_STATUS;
++	//XXX: Make sure this doesn't interfere with SIGNALLED/EXITED
++	int code = MAGIC_STATUS | result;
+ 	exit(code);
+ 
+ }
