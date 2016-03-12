@@ -29,14 +29,32 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /*
  * true - succeed.
- */
+ *
 
 int
 main(void)
 {
+	int a;
+    printf("inside true");
+	a = fork();
+    if (a == 0)
+	{
+	sleep(10);
+    exit(2);
+    }
+    else{
+    int b;
+    b = waitpid(a);
+    printf("waitpid return");
+    printf(b);
+    }
+    
+    
 	/* Just exit with success. */
 	exit(0);
 }
+*/

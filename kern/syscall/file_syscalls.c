@@ -145,7 +145,6 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 // added by pranavja
 int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
 //	//printf("Inside write with fd %d\n", fd);
 
@@ -171,7 +170,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 			//printf("is read only...\n");
 			//printf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
 		}
-		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		//lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		//printf("Some error, returning EBADF for fd=%d..\n",fd);
 		return EBADF;
 	}
@@ -182,7 +181,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 	write_buf = kmalloc(sizeof(*buf)*size);
 	if (write_buf == NULL) {
-		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		//lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		return EINVAL;
 	}
 
@@ -214,10 +213,11 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 		kfree(write_buf);
 
 		//release the lock before returning error
-		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		//lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
 		return EINVAL;
 	}
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
 	//copying code from load_elf.c
 	iov.iov_ubase = (userptr_t) buf;
@@ -243,11 +243,11 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	}
 
 	curproc->proc_filedesc[fd]->offset = uio_obj.uio_offset;
+	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
 	*retval = size - uio_obj.uio_resid;
 
 	kfree(write_buf);
-	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 	//retval = bytes_written;
 	return 0; //done: handle returns. only specific returns possible
 }
@@ -282,13 +282,6 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 		return EBADF;
 	}
 
-	void *readbuf;
-
-	readbuf = kmalloc(sizeof(*buf) * buflen);
-	if (readbuf == NULL) {
-		return EINVAL;
-	}
-
 	struct iovec iov;
 	struct uio uio_obj;
 
@@ -310,12 +303,10 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	int err = VOP_READ(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 	if(err) {
 		lock_release(curproc->proc_filedesc[fd]->fd_lock);
-		kfree(readbuf);
 		return EINVAL;
 	}
 	*retval = buflen - uio_obj.uio_resid;
 	lock_release(curproc->proc_filedesc[fd]->fd_lock);
-	kfree(readbuf);
 	return 0;
 
 }

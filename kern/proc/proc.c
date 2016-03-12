@@ -216,7 +216,9 @@ proc_create_runprogram(const char *name) {
 	newproc = proc_create(name);
 
 	newproc->proc_sem = sem_create(name, 0);
-
+	//added by pranavja
+	newproc->proc_lock = lock_create(name);
+	//pranavja end
 	insert_process_into_process_table(newproc);
 
 	if (newproc == NULL) {
