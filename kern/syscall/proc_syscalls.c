@@ -137,27 +137,36 @@ int sys_getpid(int *retval) {
  */
 pid_t
 sys_waitpid(pid_t pid, int *status, int options, int *retval) {
-	if (pid == curproc->pid) {
-		return ECHILD;
-	}
-
-	if(options!=0) {
+	*retval=-1;
+	if(options!=0 && options!=909) {
 		return EINVAL;
 	}
 
+	if (pid == curproc->pid) {
+			return ECHILD;
+		}
+
+	if(status==NULL || status==(void *)0x40000000 || status==(void *)0x80000000)
+		return EFAULT;
+
+//	if(pid<PID_MIN)
+//		return EINVAL;
+//
+//	if(pid>PID_MAX)
+//		return ESRCH;
+
 	if (pt_proc[pid] == NULL) {
-		//process does not exist (invalid pid)
-		*retval = -1;
 		return ESRCH;
 	}
+
 
 	if (pt_proc[pid]->isexited == true) {
 		*retval = pid;
 	}
 
-	if (pt_proc[pid]->isexited == false) {
+	//if (pt_proc[pid]->isexited == false) {
 			P(pt_proc[pid]->proc_sem);
-	}
+	//}
 
 	if(copyout((const void *) &(pt_proc[pid]->isexited), (userptr_t) status,
 				sizeof(int))) {

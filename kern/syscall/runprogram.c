@@ -84,8 +84,8 @@ runprogram(char *progname)
 	as_activate();
 	//logic for creating console streams
 
-//console in
-
+	//console in
+	if(curproc->proc_filedesc[0]==NULL){
 	struct vnode *ret_in; //empty nvnode
 
 	struct filedesc *filedesc_ptr_in;
@@ -158,6 +158,7 @@ runprogram(char *progname)
 	filedesc_ptr_err->offset = 0;
 
 	curproc->proc_filedesc[2] = filedesc_ptr_err;
+	}
 
 	/* Load the executable. */
 	result = load_elf(v, &entrypoint);

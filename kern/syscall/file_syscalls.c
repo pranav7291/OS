@@ -30,57 +30,48 @@
  */
 int sys_open(char *filename, int flags, int32_t *retval) {
 
-//call vfs_open
-//if error, handles
-
 	//KASSERT(curthread->t_in_interrupt == false);
 	mode_t mode = 0664; // Dunno what this means but whatever.
 
-//	//printf("\nin sys_open..\n");
-
+//	printf("\nin sys_open..\n");
 
 	char name[100];
-
 	int result;
 	//added by pranavja
 //	if(!(flags==O_RDONLY || flags==O_WRONLY || flags==O_RDWR || flags==(O_RDWR|O_CREAT|O_TRUNC))) {
 //		return EINVAL;
 //	}
+	if(filename==NULL || filename==(void *)0x40000000){
+		*retval = -1;
+		return EFAULT;
+	}
+	if(flags > 66){
+		*retval = -1;
+		return EINVAL;
+	}
 	//end pranavja
-
-//	result = copyinstr(usr_ptr_flags, flags, sizeof(flags));
-
-//	if(result) { //memory problem
-//		printf("\nSome memory problem, copyin failstryin to copy flags %d\n", result);
-//		return result;
-//	}
 
 	result = copyinstr((const_userptr_t)filename, name, sizeof(name),NULL);
 
 	if(result) { //memory problem
 //		//printf("\nSome memory problem, copyin fails when copy name %d\n", result);
+		*retval = -1;
 		return result;
 	}
 
 	struct vnode *ret; //empty nvnode
-
 	int returner = vfs_open(name, flags, mode, &ret);
 
 //	//printf("the returner of vfs_open is %d", returner);
 
 	if (returner==0) {
 //		//printf("successfully opened file %s\n", name);
-
 		//first add the default fd's (0,1,2) to the file table because the kernel shouldn't have to open these
-
-
-
 		//add an fd to the list of fds in the thread's fd table
-
 		//iterate over all the fds to check if there is an fd number missing, insert the fd there
 
 		int inserted_flag = 0;
-		for (int i = 3; i < OPEN_MAX; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
+		for (int i = 3; i < OPEN_MAX; i++) {
 			if (curproc->proc_filedesc[i] != NULL) {
 				if (curproc->proc_filedesc[i]->isempty == 1) {
 					//it is empty, you can use this
@@ -94,9 +85,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 
 //			//printf("found a usable fd at %d", i);
 			// if it gets to here, then it's found an index where pointer is not used up
-
 			//now create a filedesc structure
-
 			struct filedesc *filedesc_ptr;
 			filedesc_ptr = kmalloc(sizeof(*filedesc_ptr));
 			filedesc_ptr->fd_lock = lock_create(name); //not sure when i should use this lock
@@ -136,10 +125,8 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 	}
 
 //	//printf("returning 0");
-
 	return 0; //returns 0 if no error.
 }
-
 
 // added by pranavja
 int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
@@ -161,8 +148,8 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	if (fd >= OPEN_MAX || fd < 0 ||
 			curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
 			((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
-
-		if(curproc->proc_filedesc[fd]  == NULL ) {
+		//check for count of fd, if greater than existing, throw error
+		if(curproc->proc_filedesc[fd]  == NULL) {
 //			//printf("filedesc[fd] is null...\n");
 		} else if(curproc->proc_filedesc[fd]->isempty == 1) {
 			//printf("is empty=1\n");
@@ -171,6 +158,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 			//printf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
 		}
 		//printf("Some error, returning EBADF for fd=%d..\n",fd);
+		*retval = -1;
 		return EBADF;
 	}
 
@@ -214,7 +202,8 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 		//release the lock before returning error
 		lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
-		return EINVAL;
+		//return EINVAL;
+		return EFAULT;
 	}
 
 	//copying code from load_elf.c
