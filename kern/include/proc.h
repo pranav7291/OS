@@ -81,6 +81,8 @@ struct proc {
 
 	//adding for proc table
 	struct semaphore *proc_sem;
+	struct lock *proc_lock;
+
 	bool isexited;
 	pid_t parent_pid;
 	pid_t pid;

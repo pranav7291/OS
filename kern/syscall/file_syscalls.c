@@ -18,7 +18,6 @@
 #include <kern/fcntl.h>
 #include <kern/seek.h>
 
-
 /**
  * Added by sammokka
  *  input:
@@ -32,8 +31,6 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 
 	//KASSERT(curthread->t_in_interrupt == false);
 	mode_t mode = 0664; // Dunno what this means but whatever.
-
-//	printf("\nin sys_open..\n");
 
 	char name[100];
 	int result;
@@ -109,7 +106,9 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 				filedesc_ptr->offset = 0;
 			}
 			//make the thread->filedesc point to the filedesc
+			lock_acquire(filedesc_ptr->fd_lock);
 			curproc->proc_filedesc[i]= filedesc_ptr;
+			lock_release(curproc->proc_filedesc[i]->fd_lock);
 
 			*retval = i;	//store the value returned by vfs_open to retval
 			inserted_flag = 1;
@@ -130,6 +129,8 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 
 // added by pranavja
 int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
+
+
 //	//printf("Inside write with fd %d\n", fd);
 
 /*	Use VOP_WRITE with struct iovec and struct uio.
@@ -139,17 +140,13 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 */
 //check if fd exists, otherwise return error
 
-//	size_t stoplen;
-//
-//	if (copycheck(buf, size, &stoplen)) {
-//		return EBADF;
-//	}
 
-	if (fd >= OPEN_MAX || fd < 0 ||
-			curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
-			((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
-		//check for count of fd, if greater than existing, throw error
-		if(curproc->proc_filedesc[fd]  == NULL) {
+
+	if (fd > OPEN_MAX || fd < 0 ||
+				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
+				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
+
+		if(curproc->proc_filedesc[fd]  == NULL ) {
 //			//printf("filedesc[fd] is null...\n");
 		} else if(curproc->proc_filedesc[fd]->isempty == 1) {
 			//printf("is empty=1\n");
@@ -157,6 +154,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 			//printf("is read only...\n");
 			//printf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
 		}
+		//lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		//printf("Some error, returning EBADF for fd=%d..\n",fd);
 		*retval = -1;
 		return EBADF;
@@ -168,6 +166,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 	write_buf = kmalloc(sizeof(*buf)*size);
 	if (write_buf == NULL) {
+		//lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		return EINVAL;
 	}
 
@@ -182,7 +181,6 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 
 
-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
 //	//printf("the write buffer before copyin %s", buf);
 
@@ -200,11 +198,12 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 		kfree(write_buf);
 
 		//release the lock before returning error
-		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		//lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
 		//return EINVAL;
 		return EFAULT;
 	}
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
 	//copying code from load_elf.c
 	iov.iov_ubase = (userptr_t) buf;
@@ -230,11 +229,11 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	}
 
 	curproc->proc_filedesc[fd]->offset = uio_obj.uio_offset;
+	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
 	*retval = size - uio_obj.uio_resid;
 
 	kfree(write_buf);
-	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 	//retval = bytes_written;
 	return 0; //done: handle returns. only specific returns possible
 }
@@ -242,12 +241,15 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 int sys_close(int fd, ssize_t *retval) {
 //	//printf("In close");
 
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 	if(curproc->proc_filedesc[fd]==NULL) {
 		//printf("fd does not exist.");
 		return EBADF;
 	} else {
 		curproc->proc_filedesc[fd]->fd_refcount--;
 		if (curproc->proc_filedesc[fd]->fd_refcount == 0) {
+			lock_release(curproc->proc_filedesc[fd]->fd_lock);
+			lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
 			kfree(curproc->proc_filedesc[fd]);
 			curproc->proc_filedesc[fd] = NULL;
 		}
@@ -260,17 +262,10 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	//mostly same as sys_write kinda sorta
 
 	//same fd conditions
-	if (fd >= OPEN_MAX || fd < 0 ||
+	if (fd > OPEN_MAX || fd < 0 ||
 				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
 				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_WRONLY)  ) {
 		return EBADF;
-	}
-
-	void *readbuf;
-
-	readbuf = kmalloc(sizeof(*buf) * buflen);
-	if (readbuf == NULL) {
-		return EINVAL;
 	}
 
 	struct iovec iov;
@@ -294,19 +289,17 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	int err = VOP_READ(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 	if(err) {
 		lock_release(curproc->proc_filedesc[fd]->fd_lock);
-		kfree(readbuf);
 		return EINVAL;
 	}
 	*retval = buflen - uio_obj.uio_resid;
 	lock_release(curproc->proc_filedesc[fd]->fd_lock);
-	kfree(readbuf);
 	return 0;
 
 }
 
 int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 
-	if (filehandle >= OPEN_MAX || filehandle < 0 || newhandle >= OPEN_MAX || newhandle < 0 ||
+	if (filehandle > OPEN_MAX || filehandle < 0 || newhandle > OPEN_MAX || newhandle < 0 ||
 				curproc->proc_filedesc[filehandle]  == NULL ||
 				curproc->proc_filedesc[newhandle] != NULL) {
 		return EBADF;
@@ -318,7 +311,7 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 
 	curproc->proc_filedesc[newhandle]->fd_vnode = curproc->proc_filedesc[filehandle]->fd_vnode;
 	curproc->proc_filedesc[newhandle]->fd_lock = lock_create("dup2 file lock");
-	curproc->proc_filedesc[newhandle]->isempty = curproc->proc_filedesc[newhandle]->isempty; //not empty
+	curproc->proc_filedesc[newhandle]->isempty = curproc->proc_filedesc[filehandle]->isempty; //not empty
 	curproc->proc_filedesc[newhandle]->flags = curproc->proc_filedesc[filehandle]->flags;
 	curproc->proc_filedesc[newhandle]->offset = curproc->proc_filedesc[filehandle]->offset;
 	curproc->proc_filedesc[newhandle]->read_count = curproc->proc_filedesc[filehandle]->read_count;
@@ -333,7 +326,7 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 }
 
 off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *retval2){
-	if (filehandle >= OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
+	if (filehandle > OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
 		return EBADF;
 	}
 
