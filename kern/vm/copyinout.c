@@ -113,7 +113,7 @@ copyfail(void)
  *
  * Assumes userspace runs from 0 through USERSPACETOP-1.
  */
-//static
+static
 int
 copycheck(const_userptr_t userptr, size_t len, size_t *stoplen)
 {
@@ -142,6 +142,36 @@ copycheck(const_userptr_t userptr, size_t len, size_t *stoplen)
 	return 0;
 }
 
+//added by pranavja
+int
+copycheck1(const_userptr_t userptr, size_t len, size_t *stoplen)
+{
+	vaddr_t bot, top;
+
+	*stoplen = len;
+
+	bot = (vaddr_t) userptr;
+	top = bot+len-1;
+
+	if (top < bot) {
+		/* addresses wrapped around */
+		return EFAULT;
+	}
+
+	if (bot >= USERSPACETOP) {
+		/* region is within the kernel */
+		return EFAULT;
+	}
+
+	if (top >= USERSPACETOP) {
+		/* region overlaps the kernel. adjust the max length. */
+		*stoplen = USERSPACETOP - bot;
+	}
+
+	return 0;
+}
+
+//end pranavja
 /*
  * copyin
  *

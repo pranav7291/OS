@@ -110,7 +110,9 @@ runprogram(char *progname)
 
 
 	curproc->proc_filedesc[0] = filedesc_ptr_in;
-
+	//pranavja add
+	//curproc->count_filedesc = curproc->count_filedesc + 1;
+	//pranavja end
 //output stream
 
 
@@ -136,7 +138,9 @@ runprogram(char *progname)
 	filedesc_ptr_out->offset = 0;
 	filedesc_ptr_out->fd_refcount = 1;
 	curproc->proc_filedesc[1] = filedesc_ptr_out;
-
+	//pranavja add
+	//curproc->count_filedesc = curproc->count_filedesc + 1;
+	//pranavja end
 //console err
 
 	struct vnode *ret_err; //empty nvnode
@@ -162,6 +166,9 @@ runprogram(char *progname)
 
 
 	curproc->proc_filedesc[2] = filedesc_ptr_err;
+	//pranavja add
+	//curproc->count_filedesc = curproc->count_filedesc + 1;
+	//pranavja end
 	}
 
 	/* Load the executable. */

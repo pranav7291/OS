@@ -70,7 +70,7 @@ int copyinstr(const_userptr_t usersrc, char *dest, size_t len, size_t *got);
 int copyoutstr(const char *src, userptr_t userdest, size_t len, size_t *got);
 //added by pranavja
 int
-copycheck(const_userptr_t userptr, size_t len, size_t *stoplen);
+copycheck1(const_userptr_t userptr, size_t len, size_t *stoplen);
 
 
 #endif /* _COPYINOUT_H_ */

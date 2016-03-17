@@ -46,6 +46,13 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 		*retval = -1;
 		return EINVAL;
 	}
+
+	size_t length;
+	result = copycheck1((const_userptr_t) filename, PATH_MAX, &length);
+	if(result){
+		*retval = -1;
+		return result;
+	}
 	//end pranavja
 
 	result = copyinstr((const_userptr_t)filename, name, sizeof(name),NULL);
@@ -108,6 +115,10 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			//make the thread->filedesc point to the filedesc
 			lock_acquire(filedesc_ptr->fd_lock);
 			curproc->proc_filedesc[i]= filedesc_ptr;
+			//pranavja add
+			if(i > curproc->count_filedesc)
+			curproc->count_filedesc++;
+			//pranavja end
 			lock_release(curproc->proc_filedesc[i]->fd_lock);
 
 			*retval = i;	//store the value returned by vfs_open to retval
@@ -138,29 +149,34 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	uio->uio_segflg = UIO_USERSPACE
 	uio->uio_resid has bytes left after IO operation = len - uio->uio_resid
 */
-//check if fd exists, otherwise return error
 
-
-
-	if (fd > OPEN_MAX || fd < 0 ||
-				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
-				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
-
-		if(curproc->proc_filedesc[fd]  == NULL ) {
-//			//printf("filedesc[fd] is null...\n");
-		} else if(curproc->proc_filedesc[fd]->isempty == 1) {
-			//printf("is empty=1\n");
-		}else if((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) {
-			//printf("is read only...\n");
-			//printf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
-		}
-		//lock_release(curproc->proc_filedesc[fd]->fd_lock);
-		//printf("Some error, returning EBADF for fd=%d..\n",fd);
+	//pranavja add
+	if(fd < 0 || fd >= OPEN_MAX){
 		*retval = -1;
 		return EBADF;
 	}
 
-//	//printf("File descriptor %d exists in the file table. Yay.", fd );
+	if (fd > curproc->count_filedesc + 2 || curproc->proc_filedesc[fd]  == NULL){
+		*retval = -1;
+		return EBADF;
+	}
+	size_t length;
+	int result;
+	result = copycheck1((const_userptr_t) buf, size, &length);
+	if(result){
+		*retval = -1;
+		return EFAULT;
+	}
+	if (buf == NULL || buf ==(void *)0x40000000){
+		*retval = -1;
+		return EFAULT;
+	}
+	if (curproc->proc_filedesc[fd]  == NULL ||
+			(curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY){
+		*retval = -1;
+		return EBADF;
+	}
+	//pranavja end
 
 	void *write_buf;
 
@@ -174,12 +190,9 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	struct uio uio_obj;
 	int err;
 	off_t pos= curproc->proc_filedesc[fd]->offset;
-	int result;
 
 
 	// todo write code for the various flags
-
-
 
 
 //	//printf("the write buffer before copyin %s", buf);
@@ -217,8 +230,6 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	uio_obj.uio_space = curproc->p_addrspace;
 
 
-
-
 	err = VOP_WRITE(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 
 	if (err) {
@@ -241,17 +252,29 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 int sys_close(int fd, ssize_t *retval) {
 //	//printf("In close");
 
-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
-	if(curproc->proc_filedesc[fd]==NULL) {
-		//printf("fd does not exist.");
+	//lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+//	if(curproc->proc_filedesc[fd]==NULL) {
+//		//printf("fd does not exist.");
+//		return EBADF;
+//	}
+	//pranavja add
+	if(fd < 0 || fd > OPEN_MAX || fd > curproc->count_filedesc + 2)
+	{
+		*retval = -1;
 		return EBADF;
-	} else {
+	}
+	//pranavja end
+
+	else {
 		curproc->proc_filedesc[fd]->fd_refcount--;
 		if (curproc->proc_filedesc[fd]->fd_refcount == 0) {
-			lock_release(curproc->proc_filedesc[fd]->fd_lock);
+			//lock_release(curproc->proc_filedesc[fd]->fd_lock);
 			lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
 			kfree(curproc->proc_filedesc[fd]);
 			curproc->proc_filedesc[fd] = NULL;
+			//add pranavja
+			curproc->count_filedesc--;
+			//end pranavja
 		}
 		*retval = 0;
 		return 0;
@@ -262,12 +285,30 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	//mostly same as sys_write kinda sorta
 
 	//same fd conditions
-	if (fd > OPEN_MAX || fd < 0 ||
+	if (fd >= OPEN_MAX || fd < 0 ||
 				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
 				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_WRONLY)  ) {
+		*retval = -1;
 		return EBADF;
 	}
+	//added by pranavja
+	size_t length;
+	int result;
+	result = copycheck1((const_userptr_t) buf, buflen, &length);
+	if(result){
+		*retval = -1;
+		return result;
+	}
 
+	if (buf == NULL || buf == (void *)0x40000000){
+		*retval = -1;
+		return EFAULT;
+	}
+	if (fd > curproc->count_filedesc+2){
+		*retval = -1;
+		return EBADF;
+	}
+	//end pranavja
 	struct iovec iov;
 	struct uio uio_obj;
 
@@ -302,9 +343,16 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 	if (filehandle > OPEN_MAX || filehandle < 0 || newhandle > OPEN_MAX || newhandle < 0 ||
 				curproc->proc_filedesc[filehandle]  == NULL ||
 				curproc->proc_filedesc[newhandle] != NULL) {
+		*retval = -1;
 		return EBADF;
 	}
-
+	//pranavja add
+	if (filehandle > curproc->count_filedesc + 2){
+		*retval = -1;
+		return EBADF;
+	}
+	//pranavja end
+	//work to be done!!!!!
 	curproc->proc_filedesc[newhandle] = (struct filedesc *)kmalloc(sizeof(struct filedesc *));
 
 	lock_acquire(curproc->proc_filedesc[filehandle]->fd_lock);
@@ -327,8 +375,15 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 
 off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *retval2){
 	if (filehandle > OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
+		*retval=-1;
 		return EBADF;
 	}
+	//pranavja add
+	if(filehandle > curproc->count_filedesc + 2){
+		*retval=-1;
+		return EBADF;
+	}
+	//pranavja end
 
 	int result;
 	off_t offset;
@@ -396,7 +451,8 @@ int sys_chdir(const char *path){
 
 int sys___getcwd(char *buf, size_t buflen, int *retval){
 
-	if (buf == NULL){
+	if (buf == NULL || buf==(void *)0x40000000){
+		*retval = -1;
 		return EFAULT;
 	}
 	char *cwdbuf;

@@ -93,6 +93,14 @@ proc_create(const char *name)
 		proc->proc_filedesc[i] = NULL;
 	}
 
+	//added by pranavja
+	proc->count_filedesc = 0;
+	proc->proc_sem = sem_create(name, 0);
+	proc->proc_lock = lock_create(name);
+	proc->isexited = false;
+	proc->exitcode = -100;
+	//pranavja end
+
 	return proc;
 }
 
@@ -178,7 +186,10 @@ proc_destroy(struct proc *proc)
 
 	KASSERT(proc->p_numthreads == 0);
 	spinlock_cleanup(&proc->p_lock);
-
+	//added by pranavja
+	sem_destroy(proc->proc_sem);
+	lock_destroy(proc->proc_lock);
+	//end pranavja add
 	kfree(proc->p_name);
 	kfree(proc);
 }
@@ -215,9 +226,9 @@ proc_create_runprogram(const char *name) {
 
 	newproc = proc_create(name);
 
-	newproc->proc_sem = sem_create(name, 0);
+	//newproc->proc_sem = sem_create(name, 0);
 	//added by pranavja
-	newproc->proc_lock = lock_create(name);
+	//newproc->proc_lock = lock_create(name);
 	//pranavja end
 	insert_process_into_process_table(newproc);
 
