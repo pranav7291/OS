@@ -102,24 +102,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	for (int k = 0; k < OPEN_MAX; k++) {
 		if (curproc->proc_filedesc[k]!=NULL) {
 			lock_acquire(curproc->proc_filedesc[k]->fd_lock);
-			//added by pranavja 03/11
-//			struct filedesc *filedesc_copy;
-//			filedesc_copy = kmalloc(sizeof(*filedesc_copy));
-//			filedesc_copy->flags = curproc->proc_filedesc[k]->flags;
-//			filedesc_copy->name = kstrdup("child");
-//			filedesc_copy->fd_lock = lock_create("childlock");
-//			filedesc_copy->isempty = curproc->proc_filedesc[k]->isempty;
-//			filedesc_copy->fd_vnode = curproc->proc_filedesc[k]->fd_vnode;
-//			filedesc_copy->read_count = curproc->proc_filedesc[k]->read_count;
-//			filedesc_copy->offset = curproc->proc_filedesc[k]->offset;
-//			filedesc_copy->fd_refcount = curproc->proc_filedesc[k]->fd_refcount;
-//			newproc->proc_filedesc[k] = filedesc_copy;
-//			newproc->proc_filedesc[k]->fd_refcount++;
-//			kfree(filedesc_copy);
-//			end pranavja 03/11
-
 			newproc->proc_filedesc[k] = curproc->proc_filedesc[k];
-
 			newproc->proc_filedesc[k]->fd_refcount++;
 			lock_release(curproc->proc_filedesc[k]->fd_lock);
 
@@ -156,25 +139,17 @@ int sys_getpid(int *retval) {
  */
 pid_t
 sys_waitpid(pid_t pid, int *status, int options, int *retval) {
-	*retval=-1;
-	if(options!=0 && options!=909) {
-		return EINVAL;
-	}
-	if (pid == curproc->pid) {
+	if (pid == curproc->parent_pid || pid == curproc->pid) {
 			return ECHILD;
 		}
 
-	if(status==NULL || status==(void *)0x40000000 || status==(void *)0x80000000)
-		return EFAULT;
+	if(options!=0) {
+		return EINVAL;
+	}
 
-//	if(pid<PID_MIN)
-//		return EINVAL;
-//
-//	if(pid>PID_MAX)
-//		return ESRCH;
-
-	lock_acquire(pt_proc[pid]->proc_lock);//pranavja
 	if (pt_proc[pid] == NULL) {
+		//process does not exist (invalid pid)
+//		*retval = -1;
 		return ESRCH;
 	}
 
@@ -182,33 +157,34 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 	if (pt_proc[pid]->isexited == true) {
 		*retval = pid;
 	}
-	lock_release(pt_proc[pid]->proc_lock);//pranavja
 
-	//if (pt_proc[pid]->isexited == false) {
+	if (pt_proc[pid]->isexited == false) {
 			P(pt_proc[pid]->proc_sem);
-	//}
+	}
+
 
 	if(copyout((const void *) &(pt_proc[pid]->isexited), (userptr_t) status,
 				sizeof(int))) {
 		return EFAULT;
 	}
+	*retval = pid;
 	sem_destroy(pt_proc[pid]->proc_sem);
-
+	*status = pt_proc[pid]->exitcode;
 	proc_destroy(pt_proc[pid]);
 	pt_proc[pid] = NULL;
 	return 0;
 
 	//note: status CAN be null
 
+	//hello
+
 }
 
 int sys_exit(int code) {
-	kprintf("exiting ...");
+	//kprintf("exiting ...");
 	curproc->isexited = true;
-	//lock_acquire(curproc->proc_lock);//pranavja
 	curproc->exitcode = _MKWAIT_EXIT(code);
 	V(curproc->proc_sem);
-	//lock_release(curproc->proc_lock);//pranavja
 	thread_exit();
 	return 0;
 }

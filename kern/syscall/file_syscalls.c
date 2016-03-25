@@ -29,53 +29,57 @@
  */
 int sys_open(char *filename, int flags, int32_t *retval) {
 
+//call vfs_open
+//if error, handles
+
 	//KASSERT(curthread->t_in_interrupt == false);
 	mode_t mode = 0664; // Dunno what this means but whatever.
 
+//	//printf("\nin sys_open..\n");
+
 	char name[100];
+
 	int result;
-	//added by pranavja
-//	if(!(flags==O_RDONLY || flags==O_WRONLY || flags==O_RDWR || flags==(O_RDWR|O_CREAT|O_TRUNC))) {
-//		return EINVAL;
-//	}
-	if(filename==NULL || filename==(void *)0x40000000){
-		*retval = -1;
-		return EFAULT;
-	}
-	if(flags > 66){
-		*retval = -1;
-		return EINVAL;
+
+	int flag = flags && O_ACCMODE;
+	if (flag == O_RDONLY || flag == O_WRONLY || flag == O_RDWR) {
+	} else {
+		return EBADF;
 	}
 
-	size_t length;
-	result = copycheck1((const_userptr_t) filename, PATH_MAX, &length);
-	if(result){
-		*retval = -1;
-		return result;
-	}
-	//end pranavja
+//	result = copyinstr(usr_ptr_flags, flags, sizeof(flags));
+
+//	if(result) { //memory problem
+//		printf("\nSome memory problem, copyin failstryin to copy flags %d\n", result);
+//		return result;
+//	}
 
 	result = copyinstr((const_userptr_t)filename, name, sizeof(name),NULL);
 
 	if(result) { //memory problem
 //		//printf("\nSome memory problem, copyin fails when copy name %d\n", result);
-		*retval = -1;
 		return result;
 	}
 
 	struct vnode *ret; //empty nvnode
+
 	int returner = vfs_open(name, flags, mode, &ret);
 
 //	//printf("the returner of vfs_open is %d", returner);
 
 	if (returner==0) {
 //		//printf("successfully opened file %s\n", name);
+
 		//first add the default fd's (0,1,2) to the file table because the kernel shouldn't have to open these
+
+
+
 		//add an fd to the list of fds in the thread's fd table
+
 		//iterate over all the fds to check if there is an fd number missing, insert the fd there
 
 		int inserted_flag = 0;
-		for (int i = 3; i < OPEN_MAX; i++) {
+		for (int i = 3; i <= OPEN_MAX; i++) { //start from 3 because 0,1,2 are reserved. Wastage of memory but whatever.
 			if (curproc->proc_filedesc[i] != NULL) {
 				if (curproc->proc_filedesc[i]->isempty == 1) {
 					//it is empty, you can use this
@@ -89,7 +93,9 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 
 //			//printf("found a usable fd at %d", i);
 			// if it gets to here, then it's found an index where pointer is not used up
+
 			//now create a filedesc structure
+
 			struct filedesc *filedesc_ptr;
 			filedesc_ptr = kmalloc(sizeof(*filedesc_ptr));
 			filedesc_ptr->fd_lock = lock_create(name); //not sure when i should use this lock
@@ -115,10 +121,6 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			//make the thread->filedesc point to the filedesc
 			lock_acquire(filedesc_ptr->fd_lock);
 			curproc->proc_filedesc[i]= filedesc_ptr;
-			//pranavja add
-			if(i > curproc->count_filedesc)
-			curproc->count_filedesc++;
-			//pranavja end
 			lock_release(curproc->proc_filedesc[i]->fd_lock);
 
 			*retval = i;	//store the value returned by vfs_open to retval
@@ -135,12 +137,15 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 	}
 
 //	//printf("returning 0");
+
 	return 0; //returns 0 if no error.
 }
+
 
 // added by pranavja
 int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
 //	//printf("Inside write with fd %d\n", fd);
 
@@ -149,40 +154,35 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	uio->uio_segflg = UIO_USERSPACE
 	uio->uio_resid has bytes left after IO operation = len - uio->uio_resid
 */
+//check if fd exists, otherwise return error
 
-	//pranavja add
-	if(fd < 0 || fd >= OPEN_MAX){
-		*retval = -1;
+
+	//dummy comment for git test
+
+	if (fd > OPEN_MAX || fd < 0 ||
+				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
+				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
+
+		if(curproc->proc_filedesc[fd]  == NULL ) {
+//			//printf("filedesc[fd] is null...\n");
+		} else if(curproc->proc_filedesc[fd]->isempty == 1) {
+			//printf("is empty=1\n");
+		}else if((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) {
+			//printf("is read only...\n");
+			//printf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
+		}
+		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		//printf("Some error, returning EBADF for fd=%d..\n",fd);
 		return EBADF;
 	}
 
-	if (fd > curproc->count_filedesc + 2 || curproc->proc_filedesc[fd]  == NULL){
-		*retval = -1;
-		return EBADF;
-	}
-	size_t length;
-	int result;
-	result = copycheck1((const_userptr_t) buf, size, &length);
-	if(result){
-		*retval = -1;
-		return EFAULT;
-	}
-	if (buf == NULL || buf ==(void *)0x40000000){
-		*retval = -1;
-		return EFAULT;
-	}
-	if (curproc->proc_filedesc[fd]  == NULL ||
-			(curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY){
-		*retval = -1;
-		return EBADF;
-	}
-	//pranavja end
+//	//printf("File descriptor %d exists in the file table. Yay.", fd );
 
 	void *write_buf;
 
 	write_buf = kmalloc(sizeof(*buf)*size);
 	if (write_buf == NULL) {
-		//lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		return EINVAL;
 	}
 
@@ -190,9 +190,12 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	struct uio uio_obj;
 	int err;
 	off_t pos= curproc->proc_filedesc[fd]->offset;
+	int result;
 
 
 	// todo write code for the various flags
+
+
 
 
 //	//printf("the write buffer before copyin %s", buf);
@@ -211,12 +214,10 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 		kfree(write_buf);
 
 		//release the lock before returning error
-		//lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
-		//return EINVAL;
-		return EFAULT;
+		return EINVAL;
 	}
-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
 	//copying code from load_elf.c
 	iov.iov_ubase = (userptr_t) buf;
@@ -230,6 +231,8 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	uio_obj.uio_space = curproc->p_addrspace;
 
 
+
+
 	err = VOP_WRITE(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 
 	if (err) {
@@ -240,11 +243,11 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	}
 
 	curproc->proc_filedesc[fd]->offset = uio_obj.uio_offset;
-	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
 	*retval = size - uio_obj.uio_resid;
 
 	kfree(write_buf);
+	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 	//retval = bytes_written;
 	return 0; //done: handle returns. only specific returns possible
 }
@@ -252,29 +255,17 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 int sys_close(int fd, ssize_t *retval) {
 //	//printf("In close");
 
-	//lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
-//	if(curproc->proc_filedesc[fd]==NULL) {
-//		//printf("fd does not exist.");
-//		return EBADF;
-//	}
-	//pranavja add
-	if(fd < 0 || fd > OPEN_MAX || fd > curproc->count_filedesc + 2)
-	{
-		*retval = -1;
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+	if(curproc->proc_filedesc[fd]==NULL) {
+		//printf("fd does not exist.");
 		return EBADF;
-	}
-	//pranavja end
-
-	else {
+	} else {
 		curproc->proc_filedesc[fd]->fd_refcount--;
 		if (curproc->proc_filedesc[fd]->fd_refcount == 0) {
-			//lock_release(curproc->proc_filedesc[fd]->fd_lock);
+			lock_release(curproc->proc_filedesc[fd]->fd_lock);
 			lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
 			kfree(curproc->proc_filedesc[fd]);
 			curproc->proc_filedesc[fd] = NULL;
-			//add pranavja
-			curproc->count_filedesc--;
-			//end pranavja
 		}
 		*retval = 0;
 		return 0;
@@ -285,30 +276,19 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	//mostly same as sys_write kinda sorta
 
 	//same fd conditions
-	if (fd >= OPEN_MAX || fd < 0 ||
+	if (fd > OPEN_MAX || fd < 0 ||
 				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
 				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_WRONLY)  ) {
-		*retval = -1;
 		return EBADF;
-	}
-	//added by pranavja
-	size_t length;
-	int result;
-	result = copycheck1((const_userptr_t) buf, buflen, &length);
-	if(result){
-		*retval = -1;
-		return result;
 	}
 
-	if (buf == NULL || buf == (void *)0x40000000){
-		*retval = -1;
-		return EFAULT;
+	void *readbuf;
+
+	readbuf = kmalloc(sizeof(*buf) * buflen);
+	if (readbuf == NULL) {
+		return EINVAL;
 	}
-	if (fd > curproc->count_filedesc+2){
-		*retval = -1;
-		return EBADF;
-	}
-	//end pranavja
+
 	struct iovec iov;
 	struct uio uio_obj;
 
@@ -330,10 +310,12 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	int err = VOP_READ(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 	if(err) {
 		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		kfree(readbuf);
 		return EINVAL;
 	}
 	*retval = buflen - uio_obj.uio_resid;
 	lock_release(curproc->proc_filedesc[fd]->fd_lock);
+	kfree(readbuf);
 	return 0;
 
 }
@@ -343,16 +325,9 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 	if (filehandle > OPEN_MAX || filehandle < 0 || newhandle > OPEN_MAX || newhandle < 0 ||
 				curproc->proc_filedesc[filehandle]  == NULL ||
 				curproc->proc_filedesc[newhandle] != NULL) {
-		*retval = -1;
 		return EBADF;
 	}
-	//pranavja add
-	if (filehandle > curproc->count_filedesc + 2){
-		*retval = -1;
-		return EBADF;
-	}
-	//pranavja end
-	//work to be done!!!!!
+
 	curproc->proc_filedesc[newhandle] = (struct filedesc *)kmalloc(sizeof(struct filedesc *));
 
 	lock_acquire(curproc->proc_filedesc[filehandle]->fd_lock);
@@ -375,15 +350,8 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 
 off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *retval2){
 	if (filehandle > OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
-		*retval=-1;
 		return EBADF;
 	}
-	//pranavja add
-	if(filehandle > curproc->count_filedesc + 2){
-		*retval=-1;
-		return EBADF;
-	}
-	//pranavja end
 
 	int result;
 	off_t offset;
@@ -451,8 +419,7 @@ int sys_chdir(const char *path){
 
 int sys___getcwd(char *buf, size_t buflen, int *retval){
 
-	if (buf == NULL || buf==(void *)0x40000000){
-		*retval = -1;
+	if (buf == NULL){
 		return EFAULT;
 	}
 	char *cwdbuf;
