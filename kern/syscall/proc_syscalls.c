@@ -16,6 +16,7 @@
 #include <mips/trapframe.h>
 #include <kern/proc_syscalls.h>
 #include <kern/wait.h>
+#include <syscall.h>
 
 
 struct lock *p_lock;
@@ -177,6 +178,161 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 	//note: status CAN be null
 
 	//hello
+
+}
+
+int sys_execv(const char *program, char **uargs, int *retval){
+
+	struct vnode *v;
+	vaddr_t entrypoint, stackptr;
+	int result, argmax;
+	size_t length;
+	char *name;
+	int i = 0;
+
+	if (uargs == NULL || program == NULL){
+		*retval = -1;
+		return EFAULT;
+	}
+
+	*retval = -1;
+
+	name = kmalloc(sizeof(char) *PATH_MAX);
+	result = copyinstr((const_userptr_t)program, name, sizeof(name),&length);
+	if (result){
+		kfree(name);
+		return EFAULT;
+	}
+
+	char **args = (char **) kmalloc(sizeof(char**));
+	result = copyin((const_userptr_t)uargs, args, sizeof(args));
+
+	if (result){
+		kfree(name);
+		kfree(args);
+		return EFAULT;
+	}
+
+	//copy arguments from user space to kernel space
+	while (uargs[i] != NULL ) {
+		args[i] = (char *) kmalloc(sizeof(uargs[i]));
+		result = copyinstr((const_userptr_t) uargs[i], args[i], PATH_MAX, &length);
+		if (length > ARG_MAX)
+			return E2BIG;
+		if (result) {
+			kfree(name);
+			kfree(args);
+			return EFAULT;
+		}
+		i++;
+	}
+	argmax = i;
+
+	//Now proceeding as in runprogram
+	/* Open the file. */
+	result = vfs_open(name, O_RDONLY, 0, &v);
+	if (result) {
+		kfree(name);
+		kfree(args);
+		return result;
+	}
+
+	/* We should be a new process. */
+//	KASSERT(proc_getas() == NULL);
+
+	/* Create a new address space. */
+	curproc->p_addrspace = as_create();
+	if (curproc->p_addrspace == NULL) {
+		kfree(name);
+		kfree(args);
+		vfs_close(v);
+		return ENOMEM;
+	}
+
+	/* Switch to it and activate it. */
+	proc_setas(curproc->p_addrspace);
+	as_activate();
+
+	/* Load the executable. */
+	result = load_elf(v, &entrypoint);
+	if (result) {
+		/* p_addrspace will go away when curproc is destroyed */
+		kfree(name);
+		kfree(args);
+		vfs_close(v);
+		return result;
+	}
+
+	/* Done with the file now. */
+	vfs_close(v);
+
+	/* Define the user stack in the address space */
+	result = as_define_stack(curproc->p_addrspace, &stackptr);
+	if (result) {
+		/* p_addrspace will go away when curproc is destroyed */
+		kfree(name);
+		kfree(args);
+		return result;
+	}
+
+	//Copying arguments to user space
+	i = 0;
+
+	while(i < argmax){
+		length = strlen(args[i]) + 1;	//for \0
+		int actlen = length;
+
+		if ((length % 4)!= 0){
+			length = length - (length % 4) + 4;
+		}
+
+		char *curarg = kmalloc(sizeof(length));
+
+		for (int j = 0; j < (int)length; j++){
+			if (j < actlen)
+				curarg[j] = args[i][j];
+			else
+				curarg[j] = '\0';
+		}
+
+		stackptr = stackptr - length;
+
+		result = copyout((const void *)curarg, (userptr_t)stackptr, length);
+		if (result){
+			kfree(name);
+			kfree(args);
+			kfree(curarg);
+			return EFAULT;	//not sure whether to return this or result
+		}
+
+		args[i] = (char *)stackptr;
+
+		kfree(curarg);
+
+		i++;
+	}
+
+	stackptr = stackptr - 4*sizeof(char);
+
+	//Copying the pointers
+	for(i = argmax - 1; i >= 0; i--){
+		stackptr = stackptr - sizeof(char *);
+		result = copyout((const void *)(args + i), (userptr_t)stackptr, sizeof(char *));
+		if (result){
+			kfree(name);
+			kfree(args);
+			return EFAULT;	//again, result or this?
+		}
+	}
+
+	/* Warp to user mode. */
+	enter_new_process(argmax /*argc*/, NULL /*userspace addr of argv*/,
+				 NULL /*userspace addr of environment*/,
+				 stackptr, entrypoint);
+
+	/* enter_new_process does not return. */
+	panic("panic - execv, After enter_new_process\n");
+	return EINVAL;
 
 }
 

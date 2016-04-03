@@ -154,9 +154,14 @@ syscall(struct trapframe *tf)
 		break;
 	case SYS___getcwd:
 		err = sys___getcwd((char *) tf->tf_a0, (int) tf->tf_a1, &retval);
+		break;
 
 	case SYS_fork:
 		err= sys_fork( tf, &retval);
+		break;
+
+	case SYS_execv:
+		err = sys_execv((const char *) tf->tf_a0, (char **)tf->tf_a1, &retval);
 		break;
 
 	case SYS_getpid:

@@ -18,6 +18,8 @@ void sys__exit(int exitcode);
 
 int sys_fork(struct trapframe *tf, int *retval);
 
+int sys_execv(const char *program, char **uargs, int *retval);
+
 int sys_getpid(int *retval);
 
 pid_t
