@@ -217,7 +217,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	//copy arguments from user space to kernel space
 	while (uargs[i] != NULL ) {
 		args[i] = (char *) kmalloc(sizeof(uargs[i]));
-		result = copyinstr((const_userptr_t) uargs[i], args[i], sizeof(uargs[i]), &length);
+		result = copyin((const_userptr_t) uargs[i], args[i], sizeof(args[i]));
 		if (length > ARG_MAX)
 			return E2BIG;
 		if (result) {
