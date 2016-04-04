@@ -19,6 +19,7 @@
 #include <syscall.h>
 
 
+
 struct lock *p_lock;
 
 struct proc *pt_proc[256];
@@ -198,7 +199,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	*retval = -1;
 
 	name = kmalloc(sizeof(char) *PATH_MAX);
-	result = copyinstr((const_userptr_t)program, name, sizeof(name),&length);
+	result = copyinstr((const_userptr_t)program, name, PATH_MAX,&length);
 	if (result){
 		kfree(name);
 		return EFAULT;
@@ -216,7 +217,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	//copy arguments from user space to kernel space
 	while (uargs[i] != NULL ) {
 		args[i] = (char *) kmalloc(sizeof(uargs[i]));
-		result = copyinstr((const_userptr_t) uargs[i], args[i], PATH_MAX, &length);
+		result = copyinstr((const_userptr_t) uargs[i], args[i], sizeof(uargs[i]), &length);
 		if (length > ARG_MAX)
 			return E2BIG;
 		if (result) {
@@ -326,8 +327,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	}
 
 	/* Warp to user mode. */
-	enter_new_process(argmax /*argc*/, NULL /*userspace addr of argv*/,
-				 NULL /*userspace addr of environment*/,
+	enter_new_process(argmax /*argc*/, (userptr_t)stackptr /*userspace addr of argv*/,
+				(userptr_t)stackptr /*userspace addr of environment*/,
 				 stackptr, entrypoint);
 
 	/* enter_new_process does not return. */
@@ -337,10 +338,11 @@ int sys_execv(const char *program, char **uargs, int *retval){
 }
 
 int sys_exit(int code) {
-	//kprintf("exiting ...");
+	kprintf("exiting ...");
 	curproc->isexited = true;
 	curproc->exitcode = _MKWAIT_EXIT(code);
 	V(curproc->proc_sem);
+	//kprintf("after V ...");
 	thread_exit();
 	return 0;
 }
