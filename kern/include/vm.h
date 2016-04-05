@@ -44,6 +44,11 @@
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
 
+//added by sammokka
+struct coremap {
+
+};
+
 
 /* Initialization function */
 void vm_bootstrap(void);
