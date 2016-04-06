@@ -18,8 +18,6 @@
 #include <kern/wait.h>
 #include <syscall.h>
 
-
-
 struct lock *p_lock;
 
 struct proc *pt_proc[256];
@@ -28,9 +26,8 @@ struct proc *pt_proc[256];
 void pt_init() {
 	//kprintf("creating the proc table");
 	for (int i = 0; i < 256; i++) {
-		pt_proc[i]= NULL;
+		pt_proc[i] = NULL;
 	}
-
 	p_lock = lock_create("ptable lock");
 }
 

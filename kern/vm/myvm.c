@@ -63,22 +63,82 @@
  * Wrap ram_stealmem in a spinlock.
  */
 //static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
+struct coremap_entry coremap[];
 
+static struct spinlock *allock_lock;
+
+paddr_t first;
+paddr_t last;
+int noOfPages;
+
+int entry_count;
+paddr_t lowest_available = 0;
 void vm_bootstrap(void) {
-	/* Do nothing. */
+	first = ram_getfirstfree();
+	last = ram_getsize();
+
+	//pages below first (between first and 0) is already occupied.
+	//todo for part 2 - allocate all pages between 0 and first to kernel
+	//for the
+	first = first + noOfPages * sizeof(coremap); //change first to the address after the coremap allocation
+	noOfPages = last/PAGE_SIZE;
+	entry_count = (last - first)/PAGE_SIZE;
+//	paddr_t temp = first;
+	coremap = (struct coremap_entry *) PADDR_TO_KVADDR(first);
+	for (int i = 0; i < entry_count; i++) {
+		coremap[i].state = 2;
+		coremap[i].size = 1;
+		coremap[i].addr = 0;
+		//what will address field have? todo
+	}
+	spinlock_init(allock_lock);
 }
+
 
 
 /* Allocate/free some kernel-space virtual pages */
 vaddr_t alloc_kpages(unsigned npages) {
-	(void) npages;
-	return 0;
+
+	spinlock_acquire(allock_lock);
+//check for a free space
+	for (int i = 0; i < noOfPages; i++) {
+		if (coremap[i].state != 1) {
+			//free space found. Check if next nPages are also free
+			for (int j = 0; j < npages; j++) {
+				if (coremap[i + j].state == 1) { ///1 is free
+					continue;
+				}
+				break; //next nPages are not free.Go back to outer loop
+			}
+
+
+		}
+	}
+
+
+
+
+
 }
 
 void free_kpages(vaddr_t addr) {
-	/* nothing - leak the memory. */
 
-	(void) addr;
+	//todo free the memory
+	spinlock_acquire(allock_lock);
+	paddr_t paddr = KVADDR_TO_PADDR(addr);
+
+	//iterate over the coremap to find the address
+	for (int i = 0; i < 200; i++) {
+		if(coremap[i]!=NULL) {
+			if(coremap[i].addr==paddr && coremap[i].state != 1) {
+				coremap[i].addr = 1;
+				spinlock_release(allock_lock);
+				return;
+			}
+		}
+	}
+	spinlock_release(allock_lock);
+	return;
 }
 
 unsigned
@@ -90,12 +150,12 @@ int coremap_used_bytes() {
 }
 
 void vm_tlbshootdown_all(void) {
-	panic("dumbvm tried to do tlb shootdown?!\n");
+	panic("myvm tried to do tlb shootdown?!\n");
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {
 	(void) ts;
-	panic("dumbvm tried to do tlb shootdown?!\n");
+	panic("myvm tried to do tlb shootdown?!\n");
 }
 
 int vm_fault(int faulttype, vaddr_t faultaddress) {
