@@ -363,31 +363,40 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 }
 
 int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
-
-	if (filehandle > OPEN_MAX || filehandle < 0 || newhandle > OPEN_MAX || newhandle < 0 ||
-				curproc->proc_filedesc[filehandle]  == NULL ||
-				curproc->proc_filedesc[newhandle] != NULL) {
+	int result = 0;
+	//pranavja adding checks separately
+	if (filehandle > OPEN_MAX || filehandle < 0 || newhandle > OPEN_MAX || newhandle < 0){
 		*retval = -1;
 		return EBADF;
 	}
-	//pranavja add
-	if (filehandle > curproc->count_filedesc + 2){
+	if (curproc->proc_filedesc[filehandle]  == NULL){
 		*retval = -1;
 		return EBADF;
 	}
+//	if (filehandle > curproc->count_filedesc + 2){
+//		*retval = -1;
+//		return EBADF;
+//	}
 	//pranavja end
 	//work to be done!!!!!
-	curproc->proc_filedesc[newhandle] = (struct filedesc *)kmalloc(sizeof(struct filedesc *));
+
+	if(curproc->proc_filedesc[newhandle] != NULL){
+		result = sys_close(newhandle,retval);
+		if (result)
+			return EBADF;
+	}
 
 	lock_acquire(curproc->proc_filedesc[filehandle]->fd_lock);
 
+	curproc->proc_filedesc[newhandle] = (struct filedesc *)kmalloc(sizeof(struct filedesc *));
 	curproc->proc_filedesc[newhandle]->fd_vnode = curproc->proc_filedesc[filehandle]->fd_vnode;
 	curproc->proc_filedesc[newhandle]->fd_lock = lock_create("dup2 file lock");
 	curproc->proc_filedesc[newhandle]->isempty = curproc->proc_filedesc[filehandle]->isempty; //not empty
 	curproc->proc_filedesc[newhandle]->flags = curproc->proc_filedesc[filehandle]->flags;
 	curproc->proc_filedesc[newhandle]->offset = curproc->proc_filedesc[filehandle]->offset;
 	curproc->proc_filedesc[newhandle]->read_count = curproc->proc_filedesc[filehandle]->read_count;
-	strcpy(curproc->proc_filedesc[newhandle]->name, curproc->proc_filedesc[filehandle]->name);
+//	strcpy(curproc->proc_filedesc[newhandle]->name, curproc->proc_filedesc[filehandle]->name);
+	curproc->proc_filedesc[newhandle]->name=kstrdup(curproc->proc_filedesc[filehandle]->name);
 	curproc->proc_filedesc[newhandle]->fd_refcount = curproc->proc_filedesc[filehandle]->fd_refcount + 1;
 
 	lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
