@@ -43,6 +43,11 @@
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
 
+#define FREE 1
+#define DIRTY 2
+#define CLEAN 3
+
+
 //added by sammokka
 struct coremap_entry {
 	vaddr_t addr;
