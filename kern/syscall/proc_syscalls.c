@@ -36,8 +36,8 @@ void pt_init() {
 pid_t insert_process_into_process_table(struct proc *newproc) {
 
 	lock_acquire(p_lock);
-	pid_t i = 2;
-	for (i = 2; i < 256; i++) {
+	pid_t i = 1;
+	for (i = 1; i < 256; i++) {
 		if (pt_proc[i] == NULL) {
 			//kprintf("inserting process slot at pid->%d\n", i);
 			newproc->pid = i;
@@ -146,12 +146,6 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 		return EINVAL;
 	}
 
-	if(status==(void *)0x40000000 || status==(void *)0x80000000)
-				return EFAULT;
-
-	if (pid > PID_MAX || pid < PID_MIN)
-			return ESRCH;
-
 	if (pt_proc[pid] == NULL) {
 		//process does not exist (invalid pid)
 //		*retval = -1;
@@ -168,19 +162,13 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 	}
 
 
-//	if(copyout((const void *) &(pt_proc[pid]->isexited), (userptr_t) status,
-//				sizeof(int))) {
-//		return EFAULT;
-//	}
+	if(copyout((const void *) &(pt_proc[pid]->isexited), (userptr_t) status,
+				sizeof(int))) {
+		return EFAULT;
+	}
 	*retval = pid;
 	sem_destroy(pt_proc[pid]->proc_sem);
-//	*status = pt_proc[pid]->exitcode;
-	if(status!=NULL){
-	int exitcd = pt_proc[pid]->exitcode;
-	int result=copyout((const void *)&exitcd,(userptr_t)status,sizeof(int));
-	if(result)
-		return result;
-	}
+	*status = pt_proc[pid]->exitcode;
 	proc_destroy(pt_proc[pid]);
 	pt_proc[pid] = NULL;
 	return 0;
@@ -207,7 +195,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 
 	*retval = -1;
 
-	name = (char *)kmalloc(sizeof(char) *PATH_MAX);
+	name = kmalloc(sizeof(char) *PATH_MAX);
 	result = copyinstr((const_userptr_t)program, name, PATH_MAX,&length);
 	if (result){
 		kfree(name);
@@ -215,7 +203,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	}
 
 	char **args = (char **) kmalloc(sizeof(char**));
-	result = copyin((const_userptr_t)uargs, args, sizeof(char **));
+	result = copyin((const_userptr_t)uargs, args, sizeof(args));
 
 	if (result){
 		kfree(name);
@@ -225,10 +213,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 
 	//copy arguments from user space to kernel space
 	while (uargs[i] != NULL ) {
-//		args[i] = (char *) kmalloc(sizeof(uargs[i]));
-//		result = copyin((const_userptr_t) uargs[i], args[i], sizeof(args[i]));
-		args[i] = (char *) kmalloc(sizeof(char) * PATH_MAX);
-		result = copyinstr((const_userptr_t) uargs[i], args[i], PATH_MAX, &length);
+		args[i] = (char *) kmalloc(sizeof(uargs[i]));
+		result = copyin((const_userptr_t) uargs[i], args[i], sizeof(args[i]));
 		if (length > ARG_MAX)
 			return E2BIG;
 		if (result) {
@@ -299,7 +285,6 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		}
 
 		char *curarg = kmalloc(sizeof(length));
-		curarg = kstrdup(args[i]);
 
 		for (int j = 0; j < (int)length; j++){
 			if (j < actlen)
@@ -350,7 +335,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 }
 
 int sys_exit(int code) {
-	//kprintf("exiting ...");
+	kprintf("exiting ...");
 	curproc->isexited = true;
 	curproc->exitcode = _MKWAIT_EXIT(code);
 	V(curproc->proc_sem);
