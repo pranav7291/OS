@@ -65,55 +65,63 @@
 //static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 struct coremap_entry* coremap;
 
-static struct spinlock *allock_lock;
+struct spinlock allock_lock;
 
 paddr_t first;
 paddr_t last;
+unsigned first_free_addr;
 unsigned noOfPages;
 
 int coremap_size;
 int no_of_coremap_entries;
 paddr_t lowest_available = 0;
 void vm_bootstrap(void) {
-	first = ram_getfirstfree();
 	last = ram_getsize();
+	first = ram_getfirstfree();
 
 	//pages below first (between first and 0) is already occupied.
 	//todo for part 2 - allocate all pages between 0 and first to kernel
 	//for the
-	noOfPages = (last - first)/PAGE_SIZE;
+	noOfPages = last/PAGE_SIZE;
 	coremap_size = noOfPages * sizeof(struct coremap_entry);
 
 
-	no_of_coremap_entries = (last - first)/PAGE_SIZE;
+//	no_of_coremap_entries = (last - first)/PAGE_SIZE;
 
 
 	coremap = (struct coremap_entry *) PADDR_TO_KVADDR(first);
-
-	coremap_size = ROUNDUP(coremap_size, PAGE_SIZE);
-
 	first = first + coremap_size; //change first to the address after the coremap allocation
+	first = ROUNDUP(first, PAGE_SIZE);
+
 //	paddr_t temp = first;
-	for (int i = 0; i < no_of_coremap_entries; i++) {
+
+	first_free_addr = first / PAGE_SIZE;
+
+	for(unsigned i = 0; i>first_free_addr; i++) {
+		coremap[i].state = FIXED;
+		coremap[i].size = 1;
+		coremap[i].addr = 0; //have to store the virtual address here
+	}
+	for (unsigned i = first; i < noOfPages; i++) {
 		coremap[i].state = CLEAN;
 		coremap[i].size = 1;
 		coremap[i].addr = 0; //have to store the virtual address here
 		//what will address field have? todo
 	}
-	spinlock_init(allock_lock);
+	spinlock_init(&allock_lock);
 }
 
 /* Allocate/free some kernel-space virtual pages */
 vaddr_t alloc_kpages(unsigned npages) {
 
-	spinlock_acquire(allock_lock);
+	spinlock_acquire(&allock_lock);
 	int flag = 1;
 //check for a free space
-	for (unsigned i = 0; i < noOfPages; i++) {
-		if (coremap[i].state != DIRTY) {
+	for (unsigned i = first_free_addr; i < noOfPages; i++) {
+		if (coremap[i].state != DIRTY && coremap[i].state != FIXED) {
 			//free space found. Check if next nPages are also free
 			for (unsigned j = 0; j < npages; j++) {
-				if (coremap[i + j].state == 1) { ///1 is free
+				if (coremap[i + j].state != DIRTY) { ///1 is free
 
 				} else {
 					flag = 0;
@@ -129,18 +137,19 @@ vaddr_t alloc_kpages(unsigned npages) {
 			for (unsigned j = 0; j < npages; j++) {
 				coremap[i + j].state = DIRTY;
 			}
-			spinlock_release(allock_lock);
-			return coremap[i].addr;
+			spinlock_release(&allock_lock);
+			vaddr_t returner = PADDR_TO_KVADDR(PAGE_SIZE*i);
+			return returner;
 		}
 	}
-	spinlock_release(allock_lock);
+	spinlock_release(&allock_lock);
 	return 0;
 }
 
 void free_kpages(vaddr_t addr) {
 
 	//todo free the memory
-	spinlock_acquire(allock_lock);
+	spinlock_acquire(&allock_lock);
 //	paddr_t paddr = KVADDR_TO_PADDR(addr);
 
 	//iterate over the coremap to find the address
@@ -151,11 +160,11 @@ void free_kpages(vaddr_t addr) {
 			for(unsigned j=1;j<coremap[i].size; j++) {
 				coremap[i + j].state = FREE;
 			}
-			spinlock_release(allock_lock);
+			spinlock_release(&allock_lock);
 			return;
 		}
 	}
-	spinlock_release(allock_lock);
+	spinlock_release(&allock_lock);
 	return;
 }
 

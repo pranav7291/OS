@@ -46,6 +46,7 @@
 #define FREE 1
 #define DIRTY 2
 #define CLEAN 3
+#define FIXED 4
 
 
 //added by sammokka
