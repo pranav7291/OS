@@ -36,7 +36,6 @@
  * You'll probably want to add stuff here.
  */
 
-
 #include <machine/vm.h>
 
 /* Fault-type arguments to vm_fault() */
@@ -44,6 +43,18 @@
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
 
+#define FREE 1
+#define DIRTY 2
+#define CLEAN 3
+#define FIXED 4
+
+
+//added by sammokka
+struct coremap_entry {
+	vaddr_t addr;
+	size_t size ;
+	int state; //0 for clean, 1 for dirty, 2 for free
+};
 
 /* Initialization function */
 void vm_bootstrap(void);
@@ -65,6 +76,5 @@ unsigned int coremap_used_bytes(void);
 /* TLB shootdown handling called from interprocessor_interrupt */
 void vm_tlbshootdown_all(void);
 void vm_tlbshootdown(const struct tlbshootdown *);
-
 
 #endif /* _VM_H_ */
