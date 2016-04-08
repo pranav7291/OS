@@ -103,7 +103,7 @@ void vm_bootstrap(void) {
 		coremap[i].size = 1;
 		coremap[i].addr = 0; //have to store the virtual address here
 	}
-	for (unsigned i = first; i < noOfPages; i++) {
+	for (unsigned i = first_free_addr; i < noOfPages; i++) {
 		coremap[i].state = CLEAN;
 		coremap[i].size = 1;
 		coremap[i].addr = 0; //have to store the virtual address here
@@ -116,9 +116,10 @@ void vm_bootstrap(void) {
 vaddr_t alloc_kpages(unsigned npages) {
 
 	spinlock_acquire(&allock_lock);
-	int flag = 1;
+
 //check for a free space
 	for (unsigned i = first_free_addr; i < noOfPages; i++) {
+		int flag = 1;
 		if (coremap[i].state != DIRTY && coremap[i].state != FIXED) {
 			//free space found. Check if next nPages are also free
 			for (unsigned j = 0; j < npages; j++) {
@@ -135,8 +136,9 @@ vaddr_t alloc_kpages(unsigned npages) {
 			//npages of free space found.
 			coremap[i].state = DIRTY;
 			coremap[i].size = npages;
-			for (unsigned j = 0; j < npages; j++) {
+			for (unsigned j = 1; j < npages; j++) {
 				coremap[i + j].state = DIRTY;
+				coremap[i + j].size = 1;
 			}
 			usedBytes = usedBytes + PAGE_SIZE*npages;
 			spinlock_release(&allock_lock);
