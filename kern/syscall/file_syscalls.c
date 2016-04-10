@@ -397,7 +397,7 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 	curproc->proc_filedesc[newhandle]->read_count = curproc->proc_filedesc[filehandle]->read_count;
 //	strcpy(curproc->proc_filedesc[newhandle]->name, curproc->proc_filedesc[filehandle]->name);
 	curproc->proc_filedesc[newhandle]->name=kstrdup(curproc->proc_filedesc[filehandle]->name);
-	curproc->proc_filedesc[newhandle]->fd_refcount = curproc->proc_filedesc[filehandle]->fd_refcount + 1;
+	curproc->proc_filedesc[newhandle]->fd_refcount = curproc->proc_filedesc[filehandle]->fd_refcount;
 
 	lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
 

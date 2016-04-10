@@ -176,7 +176,7 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 //		return EFAULT;
 //	}
 	*retval = pid;
-	sem_destroy(pt_proc[pid]->proc_sem);
+//	sem_destroy(pt_proc[pid]->proc_sem);
 //	*status = pt_proc[pid]->exitcode;
 	if(status!=NULL){
 	int exitcd = pt_proc[pid]->exitcode;
@@ -184,7 +184,7 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 	if(result)
 		return result;
 	}
-	proc_destroy(pt_proc[pid]);
+//	proc_destroy(pt_proc[pid]);
 	pt_proc[pid] = NULL;
 	return 0;
 
@@ -343,7 +343,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 
 	/* Warp to user mode. */
 	enter_new_process(argmax /*argc*/, (userptr_t)stackptr /*userspace addr of argv*/,
-				(userptr_t)stackptr /*userspace addr of environment*/,
+				NULL /*userspace addr of environment*/,
 				 stackptr, entrypoint);
 
 	/* enter_new_process does not return. */
