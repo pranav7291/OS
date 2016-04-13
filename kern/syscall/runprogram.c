@@ -105,7 +105,7 @@ runprogram(char *progname)
 	filedesc_ptr_in->fd_vnode = ret_in; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_in->read_count = 1;
 	filedesc_ptr_in->offset = 0;
-//	filedesc_ptr_in->fd_refcount = 1;
+	filedesc_ptr_in->fd_refcount = 1;
 
 
 
@@ -136,7 +136,7 @@ runprogram(char *progname)
 	filedesc_ptr_out->fd_vnode = ret_out; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_out->read_count = 1;
 	filedesc_ptr_out->offset = 0;
-//	filedesc_ptr_out->fd_refcount = 1;
+	filedesc_ptr_out->fd_refcount = 1;
 	curproc->proc_filedesc[1] = filedesc_ptr_out;
 	//pranavja add
 	//curproc->count_filedesc = curproc->count_filedesc + 1;
@@ -162,7 +162,7 @@ runprogram(char *progname)
 	filedesc_ptr_err->fd_vnode = ret_err; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_err->read_count = 1;
 	filedesc_ptr_err->offset = 0;
-//	filedesc_ptr_err->fd_refcount = 1;
+	filedesc_ptr_err->fd_refcount = 1;
 
 
 	curproc->proc_filedesc[2] = filedesc_ptr_err;

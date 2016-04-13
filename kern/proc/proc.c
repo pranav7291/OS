@@ -176,8 +176,10 @@ proc_destroy(struct proc *proc)
 
 	KASSERT(proc->p_numthreads == 0);
 	spinlock_cleanup(&proc->p_lock);
-
 	kfree(proc->p_name);
+	for (int i = 0; i < OPEN_MAX; i++) {
+		proc->proc_filedesc[i] = NULL;
+	}
 	kfree(proc);
 }
 

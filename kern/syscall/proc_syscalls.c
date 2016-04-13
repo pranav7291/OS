@@ -111,6 +111,9 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 		}
 	}
 
+	newproc->p_cwd=curproc->p_cwd;
+	VOP_INCREF(curproc->p_cwd);
+
 	*retval = newproc->pid;
 
 	if(thread_fork("Child Thread", newproc,
@@ -141,57 +144,50 @@ int sys_getpid(int *retval) {
  */
 pid_t
 sys_waitpid(pid_t pid, int *status, int options, int *retval) {
+	//kprintf("\nwaiting on pid %d", pid);
 	if (pid == curproc->parent_pid || pid == curproc->pid) {
-			return ECHILD;
-		}
+		return ECHILD;
+	}
 
-	if(options!=0) {
+	if (options != 0) {
 		return EINVAL;
 	}
 
-	if(status==(void *)0x40000000 || status==(void *)0x80000000)
-				return EFAULT;
+	if (status == (void *) 0x40000000 || status == (void *) 0x80000000) {
+		return EFAULT;
+	}
 
-	if (pid > PID_MAX || pid < PID_MIN)
-			return ESRCH;
-
-	if (pt_proc[pid] == NULL) {
-		//process does not exist (invalid pid)
-//		*retval = -1;
+	if (pid > PID_MAX || pid < PID_MIN) {
 		return ESRCH;
 	}
 
-
-	if (pt_proc[pid]->isexited == true) {
-		*retval = pid;
+	if (pt_proc[pid] == NULL) {
+		//process does not exist (invalid pid)
+		return ESRCH;
 	}
 
 	if (pt_proc[pid]->isexited == false) {
-			P(pt_proc[pid]->proc_sem);
+		P(pt_proc[pid]->proc_sem);
 	}
 
-
-//	if(copyout((const void *) &(pt_proc[pid]->isexited), (userptr_t) status,
-//				sizeof(int))) {
-//		return EFAULT;
-//	}
 	*retval = pid;
-//	sem_destroy(pt_proc[pid]->proc_sem);
-//	*status = pt_proc[pid]->exitcode;
-	if(status!=NULL){
-	int exitcd = pt_proc[pid]->exitcode;
-	int result=copyout((const void *)&exitcd,(userptr_t)status,sizeof(int));
-	if(result)
-		return result;
+	if (status != NULL) {
+		int exitcd = pt_proc[pid]->exitcode;
+		int result = copyout((const void *) &exitcd, (userptr_t) status,
+				sizeof(int));
+
+		if (result) {
+			sem_destroy(pt_proc[pid]->proc_sem);
+			proc_destroy(pt_proc[pid]);
+			pt_proc[pid] = NULL;
+			return result;
+		}
 	}
-//	proc_destroy(pt_proc[pid]);
+	sem_destroy(pt_proc[pid]->proc_sem);
+	proc_destroy(pt_proc[pid]);
 	pt_proc[pid] = NULL;
+	//kprintf("\ndestroyed pid %d", pid);
 	return 0;
-
-	//note: status CAN be null
-
-	//hello
-
 }
 
 int sys_execv(const char *program, char **uargs, int *retval){
@@ -353,11 +349,16 @@ int sys_execv(const char *program, char **uargs, int *retval){
 }
 
 int sys_exit(int code) {
-	//kprintf("exiting ...");
+	//kprintf("exiting pid %d", curproc->pid);
 	curproc->isexited = true;
 	curproc->exitcode = _MKWAIT_EXIT(code);
+	for (int i = 3; i < OPEN_MAX; i++) {
+		if (curproc->proc_filedesc[i] != NULL) {
+			int retval;
+			sys_close(i, &retval);
+		}
+	}
 	V(curproc->proc_sem);
-	//kprintf("after V ...");
 	thread_exit();
 	return 0;
 }

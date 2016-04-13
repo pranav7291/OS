@@ -135,6 +135,7 @@ common_prog(int nargs, char **args)
 			proc /* new process */,
 			cmd_progthread /* thread function */,
 			args /* thread arg */, nargs /* thread arg */);
+
 	sys_waitpid(proc->pid, &status, 0, &retval);
 	//P(lockproc_sem);
 	if (result) {
