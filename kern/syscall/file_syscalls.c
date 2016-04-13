@@ -285,10 +285,9 @@ int sys_close(int fd, ssize_t *retval) {
 	if (fd < 0 || fd > OPEN_MAX ) {
 		*retval = -1;
 		return EBADF;
-	}
-	//pranavja end
-
-	else {
+	} else if (curproc->proc_filedesc[fd]==NULL){
+		return EBADF;
+	}	else {
 		curproc->proc_filedesc[fd]->fd_refcount--;
 		////kprintf("\n close() the ref count is %d", curproc->proc_filedesc[fd]->fd_refcount);
 		if (curproc->proc_filedesc[fd]->fd_refcount == 0) {
