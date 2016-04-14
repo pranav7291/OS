@@ -336,6 +336,8 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	struct iovec iov;
 	struct uio uio_obj;
 
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+
 	//copying code from load_elf.c
 	iov.iov_ubase = (userptr_t) buf;
 	iov.iov_len = buflen;
@@ -350,7 +352,6 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 
 	// todo write code for the various flags
 
-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 	int err = VOP_READ(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 	if(err) {
 		lock_release(curproc->proc_filedesc[fd]->fd_lock);
