@@ -282,18 +282,19 @@ int sys_close(int fd, ssize_t *retval) {
 //		return EBADF;
 //	}
 	//pranavja add
-	if(fd < 0 || fd > OPEN_MAX || fd > curproc->count_filedesc + 2)
-	{
+	if (fd < 0 || fd > OPEN_MAX ) {
 		*retval = -1;
 		return EBADF;
-	}
-	//pranavja end
-
-	else {
+	} else if (curproc->proc_filedesc[fd]==NULL){
+		return EBADF;
+	}	else {
 		curproc->proc_filedesc[fd]->fd_refcount--;
+		////kprintf("\n close() the ref count is %d", curproc->proc_filedesc[fd]->fd_refcount);
 		if (curproc->proc_filedesc[fd]->fd_refcount == 0) {
 			//lock_release(curproc->proc_filedesc[fd]->fd_lock);
+			vfs_close(curproc->proc_filedesc[fd]->fd_vnode);
 			lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
+			kfree(curproc->proc_filedesc[fd]->name);
 			kfree(curproc->proc_filedesc[fd]);
 			curproc->proc_filedesc[fd] = NULL;
 			//add pranavja
@@ -328,15 +329,9 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 		*retval = -1;
 		return EFAULT;
 	}
-	if (fd > curproc->count_filedesc+2){
-		*retval = -1;
-		return EBADF;
-	}
 	//end pranavja
 	struct iovec iov;
 	struct uio uio_obj;
-
-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
 	//copying code from load_elf.c
 	iov.iov_ubase = (userptr_t) buf;
@@ -352,6 +347,7 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 
 	// todo write code for the various flags
 
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 	int err = VOP_READ(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 	if(err) {
 		lock_release(curproc->proc_filedesc[fd]->fd_lock);
@@ -374,12 +370,6 @@ int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
 		*retval = -1;
 		return EBADF;
 	}
-//	if (filehandle > curproc->count_filedesc + 2){
-//		*retval = -1;
-//		return EBADF;
-//	}
-	//pranavja end
-	//work to be done!!!!!
 
 	if(curproc->proc_filedesc[newhandle] != NULL){
 		result = sys_close(newhandle,retval);
