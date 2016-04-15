@@ -213,38 +213,87 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		return EFAULT;
 	}
 
-	char **args = (char **) kmalloc(sizeof(char**));
-	result = copyin((const_userptr_t)uargs, args, sizeof(char **));
-
-	if (result){
-		kfree(name);
-		kfree(args);
-		return EFAULT;
-	}
+//	char **args = (char **) kmalloc(sizeof(char**));
+//	result = copyin((const_userptr_t)uargs, args, sizeof(char **));
+//
+//	if (result){
+//		kfree(name);
+//		kfree(args);
+//		return EFAULT;
+//	}
 
 	//copy arguments from user space to kernel space
+//	while (uargs[i] != NULL ) {
+////		args[i] = (char *) kmalloc(sizeof(char) * PATH_MAX);
+////		result = copyinstr((const_userptr_t) uargs[i], args[i], PATH_MAX, &length);
+//		args[i] = (char *) kmalloc(sizeof(char) * (strlen(uargs[i])+1));
+//		result = copyinstr((const_userptr_t) uargs[i], args[i], (sizeof(char) * (strlen(uargs[i])+1)), &length);
+//		if (length > ARG_MAX)
+//			return E2BIG;
+//		if (result) {
+//			kfree(name);
+//			kfree(args);
+//			return EFAULT;
+//		}
+//		i++;
+//	}
+//	argmax = i;
+
+
+	int len = 0;
+	int act = 0;
+	int x = 0;
+	int totallen = 0;
+	while (uargs[x] != NULL){
+		len = strlen(uargs[x])+1;
+		if ((len % 4)!= 0){
+			len = len - (len % 4) + 4;
+		}
+		totallen = totallen + len;
+		x++;
+	}
+
+	char *buf = (char *) kmalloc(sizeof(char) * (totallen+1));
+	char *temp = buf;
 	while (uargs[i] != NULL ) {
-//		args[i] = (char *) kmalloc(sizeof(uargs[i]));
-//		result = copyin((const_userptr_t) uargs[i], args[i], sizeof(args[i]));
-		args[i] = (char *) kmalloc(sizeof(char) * PATH_MAX);
-		result = copyinstr((const_userptr_t) uargs[i], args[i], PATH_MAX, &length);
-		if (length > ARG_MAX)
-			return E2BIG;
+		//		args[i] = (char *) kmalloc(sizeof(char) * PATH_MAX);
+		//		result = copyinstr((const_userptr_t) uargs[i], args[i], PATH_MAX, &length);
+		length = 0;
+		len = strlen(uargs[i])+1;
+		act = len;
+		if ((len % 4)!= 0){
+			len = len - (len % 4) + 4;
+		}
+//		args[i] = (char *) kmalloc(sizeof(char) * len);
+		result = copyinstr((const_userptr_t) uargs[i], temp, (sizeof(char) * (strlen(uargs[i])+1)), &length);
+//		if (length > ARG_MAX)
+//			return E2BIG;
 		if (result) {
 			kfree(name);
-			kfree(args);
+			kfree(buf);
 			return EFAULT;
 		}
+
+//		temp = temp + (strlen(uargs[i]) * sizeof(char));
+		temp = temp + (strlen(uargs[i])+1);
+		while(act < len){
+			*temp = '\0';
+//			temp = temp + sizeof(char);
+			temp++;
+			act++;
+		}
+
 		i++;
 	}
 	argmax = i;
+
 
 	//Now proceeding as in runprogram
 	/* Open the file. */
 	result = vfs_open(name, O_RDONLY, 0, &v);
 	if (result) {
 		kfree(name);
-		kfree(args);
+		kfree(buf);
 		return result;
 	}
 
@@ -255,7 +304,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	curproc->p_addrspace = as_create();
 	if (curproc->p_addrspace == NULL) {
 		kfree(name);
-		kfree(args);
+		kfree(buf);
 		vfs_close(v);
 		return ENOMEM;
 	}
@@ -269,7 +318,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
 		kfree(name);
-		kfree(args);
+		kfree(buf);
 		vfs_close(v);
 		return result;
 	}
@@ -282,44 +331,47 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
 		kfree(name);
-		kfree(args);
+		kfree(buf);
 		return result;
 	}
 
 	//Copying arguments to user space
 	i = 0;
-
+	temp = buf;
+	char *temp1 = buf;
+	char *helper[argmax];
 	while(i < argmax){
-		length = strlen(args[i]) + 1;	//for \0
-		int actlen = length;
+//		length = strlen(args[i]) + 1;
 
-		if ((length % 4)!= 0){
-			length = length - (length % 4) + 4;
+//		if ((length % 4)!= 0){
+//			length = length - (length % 4) + 4;
+//		}
+		length = 0;
+		len = 0;
+		while (*temp != '\0'){
+//			temp = temp + sizeof(char);
+			temp++;
+			len++;
+		}
+		temp++;
+		len++;
+		if((len % 4)!=0){
+			temp = temp + 4 - (len % 4);
+			len = len - (len % 4) + 4;
 		}
 
-		char *curarg = kmalloc(sizeof(length));
-		curarg = kstrdup(args[i]);
-
-		for (int j = 0; j < (int)length; j++){
-			if (j < actlen)
-				curarg[j] = args[i][j];
-			else
-				curarg[j] = '\0';
-		}
-
-		stackptr = stackptr - length;
-
-		result = copyout((const void *)curarg, (userptr_t)stackptr, length);
+		stackptr = stackptr - len;
+		act = len;
+		result = copyout((const void *)(temp1), (userptr_t)stackptr, len);
 		if (result){
 			kfree(name);
-			kfree(args);
-			kfree(curarg);
+			kfree(buf);
 			return EFAULT;	//not sure whether to return this or result
 		}
-
-		args[i] = (char *)stackptr;
-
-		kfree(curarg);
+//		temp1 = (char *)stackptr;
+//		temp1 = temp1 + (len * sizeof(char));
+		temp1 = temp1 + (act);
+		helper[i] = (char *)stackptr;
 
 		i++;
 	}
@@ -329,13 +381,17 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	//Copying the pointers
 	for(i = argmax - 1; i >= 0; i--){
 		stackptr = stackptr - sizeof(char *);
-		result = copyout((const void *)(args + i), (userptr_t)stackptr, sizeof(char *));
+		result = copyout((const void *)(helper + i), (userptr_t)stackptr, sizeof(char *));
 		if (result){
 			kfree(name);
-			kfree(args);
+			kfree(buf);
 			return EFAULT;	//again, result or this?
 		}
 	}
+
+	kfree(name);
+	kfree(buf);
+
 
 	/* Warp to user mode. */
 	enter_new_process(argmax /*argc*/, (userptr_t)stackptr /*userspace addr of argv*/,
