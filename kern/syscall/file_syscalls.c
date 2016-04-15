@@ -359,52 +359,43 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 
 }
 
-int sys_dup2(int filehandle, int newhandle, ssize_t *retval){
+int sys_dup2(int oldfd, int newfd, ssize_t *retval){
 	int result = 0;
 	//pranavja adding checks separately
-	if (filehandle > OPEN_MAX || filehandle < 0 || newhandle > OPEN_MAX || newhandle < 0){
+	if (oldfd > OPEN_MAX || oldfd < 0 || newfd > OPEN_MAX || newfd < 0){
 		*retval = -1;
 		return EBADF;
 	}
-	if (curproc->proc_filedesc[filehandle]  == NULL){
+	if (curproc->proc_filedesc[oldfd]  == NULL){
 		*retval = -1;
 		return EBADF;
 	}
 
-	if(curproc->proc_filedesc[newhandle] != NULL){
-		result = sys_close(newhandle,retval);
-		if (result)
+	if (curproc->proc_filedesc[newfd] != NULL) {
+		result = sys_close(newfd, retval);
+		if (result) {
 			return EBADF;
+		}
 	}
-
-	lock_acquire(curproc->proc_filedesc[filehandle]->fd_lock);
-
-	curproc->proc_filedesc[newhandle] = (struct filedesc *)kmalloc(sizeof(struct filedesc *));
-	curproc->proc_filedesc[newhandle]->fd_vnode = curproc->proc_filedesc[filehandle]->fd_vnode;
-	curproc->proc_filedesc[newhandle]->fd_lock = lock_create("dup2 file lock");
-	curproc->proc_filedesc[newhandle]->isempty = curproc->proc_filedesc[filehandle]->isempty; //not empty
-	curproc->proc_filedesc[newhandle]->flags = curproc->proc_filedesc[filehandle]->flags;
-	curproc->proc_filedesc[newhandle]->offset = curproc->proc_filedesc[filehandle]->offset;
-	curproc->proc_filedesc[newhandle]->read_count = curproc->proc_filedesc[filehandle]->read_count;
-//	strcpy(curproc->proc_filedesc[newhandle]->name, curproc->proc_filedesc[filehandle]->name);
-	curproc->proc_filedesc[newhandle]->name=kstrdup(curproc->proc_filedesc[filehandle]->name);
-	curproc->proc_filedesc[newhandle]->fd_refcount = curproc->proc_filedesc[filehandle]->fd_refcount;
-
-	lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
-
-	*retval = newhandle;
+	lock_acquire(curproc->proc_filedesc[oldfd]->fd_lock);
+	curproc->proc_filedesc[oldfd]->fd_refcount++;
+	curproc->proc_filedesc[newfd] = curproc->proc_filedesc[oldfd];
+	lock_release(curproc->proc_filedesc[oldfd]->fd_lock);
+	*retval = newfd;
 	return 0;
 
 }
 
-off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *retval2){
-	if (filehandle > OPEN_MAX || filehandle < 0 || curproc->proc_filedesc[filehandle]  == NULL){
-		*retval=-1;
+off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval,
+		ssize_t *retval2) {
+	if (filehandle
+			> OPEN_MAX|| filehandle < 0 || curproc->proc_filedesc[filehandle] == NULL) {
+		*retval = -1;
 		return EBADF;
 	}
 	//pranavja add
-	if(filehandle > curproc->count_filedesc + 2){
-		*retval=-1;
+	if (filehandle > curproc->count_filedesc + 2) {
+		*retval = -1;
 		return EBADF;
 	}
 	//pranavja end

@@ -90,7 +90,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	newproc = proc_create_runprogram("name");
 
 	//Copy parents address space
-	if (as_copy(curproc->p_addrspace,&newproc->p_addrspace)) {
+	if (as_copy(curproc->p_addrspace, &newproc->p_addrspace)) {
 		return ENOMEM;
 	}
 
