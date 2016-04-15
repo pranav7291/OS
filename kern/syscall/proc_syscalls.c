@@ -24,6 +24,8 @@ struct lock *p_lock;
 
 struct proc *pt_proc[256];
 
+char *helper[4000];
+
 //initializes file table
 void pt_init() {
 	//kprintf("creating the proc table");
@@ -339,7 +341,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	i = 0;
 	temp = buf;
 	char *temp1 = buf;
-	char *helper[argmax];
+//	char *helper[argmax];
 	while(i < argmax){
 //		length = strlen(args[i]) + 1;
 
