@@ -410,10 +410,10 @@ off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *r
 		return EBADF;
 	}
 	//pranavja add
-//	if(filehandle > curproc->count_filedesc + 2){
-//		*retval=-1;
-//		return EBADF;
-//	}
+	if(filehandle > curproc->count_filedesc + 2){
+		*retval=-1;
+		return EBADF;
+	}
 	//pranavja end
 
 	int result;
