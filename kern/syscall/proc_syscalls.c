@@ -208,6 +208,18 @@ int sys_execv(const char *program, char **uargs, int *retval){
 
 	*retval = -1;
 
+	size_t length1;
+	result = copycheck1((const_userptr_t) program, PATH_MAX, &length1);
+	if(result){
+		return result;
+	}
+
+	result = copycheck1((const_userptr_t) uargs, PATH_MAX, &length1);
+	if(result){
+		return result;
+	}
+
+
 	name = (char *)kmalloc(sizeof(char) *PATH_MAX);
 	result = copyinstr((const_userptr_t)program, name, PATH_MAX,&length);
 	if (result){
@@ -215,6 +227,20 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		return EFAULT;
 	}
 
+	if((void *) program== (void *)0x40000000 || (void *) uargs== (void *)0x40000000){
+		kfree(name);
+		return EFAULT;
+	}
+
+	if((char *)program==NULL || (char *)program=='\0'){
+		kfree(name);
+		return EINVAL;
+	}
+
+	if(length < 2 || length > PATH_MAX){
+		kfree(name);
+		return EINVAL;
+	}
 
 	int len = 0;
 	int act = 0;

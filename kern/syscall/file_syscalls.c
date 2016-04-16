@@ -334,6 +334,8 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 	struct uio uio_obj;
 
 	//copying code from load_elf.c
+	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+
 	iov.iov_ubase = (userptr_t) buf;
 	iov.iov_len = buflen;
 	uio_obj.uio_iov = &iov;
@@ -347,12 +349,13 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 
 	// todo write code for the various flags
 
-	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+//	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 	int err = VOP_READ(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 	if(err) {
 		lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		return EINVAL;
 	}
+	curproc->proc_filedesc[fd]->offset = uio_obj.uio_offset;
 	*retval = buflen - uio_obj.uio_resid;
 	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 	return 0;
@@ -371,13 +374,14 @@ int sys_dup2(int oldfd, int newfd, ssize_t *retval){
 		return EBADF;
 	}
 
+	lock_acquire(curproc->proc_filedesc[oldfd]->fd_lock);
 	if(curproc->proc_filedesc[newfd] != NULL){
 		result = sys_close(newfd,retval);
 		if (result)
 			return EBADF;
 	}
 
-	lock_acquire(curproc->proc_filedesc[oldfd]->fd_lock);
+//	lock_acquire(curproc->proc_filedesc[oldfd]->fd_lock);
 
 //	curproc->proc_filedesc[newhandle] = (struct filedesc *)kmalloc(sizeof(struct filedesc *));
 //	curproc->proc_filedesc[newhandle]->fd_vnode = curproc->proc_filedesc[filehandle]->fd_vnode;
@@ -406,10 +410,10 @@ off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *r
 		return EBADF;
 	}
 	//pranavja add
-	if(filehandle > curproc->count_filedesc + 2){
-		*retval=-1;
-		return EBADF;
-	}
+//	if(filehandle > curproc->count_filedesc + 2){
+//		*retval=-1;
+//		return EBADF;
+//	}
 	//pranavja end
 
 	int result;
