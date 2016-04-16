@@ -215,32 +215,6 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		return EFAULT;
 	}
 
-//	char **args = (char **) kmalloc(sizeof(char**));
-//	result = copyin((const_userptr_t)uargs, args, sizeof(char **));
-//
-//	if (result){
-//		kfree(name);
-//		kfree(args);
-//		return EFAULT;
-//	}
-
-	//copy arguments from user space to kernel space
-//	while (uargs[i] != NULL ) {
-////		args[i] = (char *) kmalloc(sizeof(char) * PATH_MAX);
-////		result = copyinstr((const_userptr_t) uargs[i], args[i], PATH_MAX, &length);
-//		args[i] = (char *) kmalloc(sizeof(char) * (strlen(uargs[i])+1));
-//		result = copyinstr((const_userptr_t) uargs[i], args[i], (sizeof(char) * (strlen(uargs[i])+1)), &length);
-//		if (length > ARG_MAX)
-//			return E2BIG;
-//		if (result) {
-//			kfree(name);
-//			kfree(args);
-//			return EFAULT;
-//		}
-//		i++;
-//	}
-//	argmax = i;
-
 
 	int len = 0;
 	int act = 0;
