@@ -365,10 +365,24 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 int sys_dup2(int oldfd, int newfd, ssize_t *retval){
 	int result = 0;
 	//pranavja adding checks separately
-	if (oldfd > OPEN_MAX || oldfd < 0 || newfd > OPEN_MAX || newfd < 0){
-		*retval = -1;
-		return EBADF;
+//	if (oldfd > OPEN_MAX || oldfd < 0 || newfd > OPEN_MAX || newfd < 0){
+//		*retval = -1;
+//		return EBADF;
+//	}
+	if (oldfd > OPEN_MAX || oldfd < 0 || newfd < 0 || newfd >= OPEN_MAX){
+			*retval = -1;
+			return EBADF;
 	}
+	if (newfd >= OPEN_MAX ){
+			*retval = -1;
+			return EMFILE;
+	}
+
+//	if (newfd == oldfd){
+//		*retval = -1;
+//		return EBADF;
+//	}
+
 	if (curproc->proc_filedesc[oldfd]  == NULL){
 		*retval = -1;
 		return EBADF;
@@ -410,10 +424,10 @@ off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *r
 		return EBADF;
 	}
 	//pranavja add
-	if(filehandle > curproc->count_filedesc + 2){
-		*retval=-1;
-		return EBADF;
-	}
+//	if(filehandle > curproc->count_filedesc + 2){
+//		*retval=-1;
+//		return EBADF;
+//	}
 	//pranavja end
 
 	int result;
@@ -425,7 +439,7 @@ off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *r
 	result = VOP_ISSEEKABLE(curproc->proc_filedesc[filehandle]->fd_vnode);
 	if(!result){//file not seekable
 			lock_release(curproc->proc_filedesc[filehandle]->fd_lock);
-			return result;
+			return ESPIPE;
 	}
 
 	result = VOP_STAT(curproc->proc_filedesc[filehandle]->fd_vnode, &file_stat);

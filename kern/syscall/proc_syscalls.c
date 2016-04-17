@@ -201,23 +201,29 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	char *name;
 	int i = 0;
 
-	if (uargs == NULL || program == NULL){
-		*retval = -1;
-		return EFAULT;
-	}
 
 	*retval = -1;
 
-//	size_t length1;
-//	result = copycheck1((const_userptr_t) program, PATH_MAX, &length1);
-//	if(result){
-//		return result;
+	if (uargs == NULL || program == NULL){
+		return EFAULT;
+	}
+
+
+	size_t length1;
+	result = copycheck1((const_userptr_t) program, PATH_MAX, &length1);
+	if(result){
+		return result;
+	}
+
+	result = copycheck1((const_userptr_t) uargs, PATH_MAX, &length1);
+	if(result){
+		return result;
+	}
+
+//	if (uargs[1] == NULL){
+//		return EFAULT;
 //	}
-//
-//	result = copycheck1((const_userptr_t) uargs, PATH_MAX, &length1);
-//	if(result){
-//		return result;
-//	}
+
 
 
 	name = (char *)kmalloc(sizeof(char) *PATH_MAX);
@@ -227,19 +233,36 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		return EFAULT;
 	}
 
-//	if((void *) program== (void *)0x40000000 || (void *) uargs== (void *)0x40000000){
-//		kfree(name);
-//		return EFAULT;
-//	}
+	if((void *) program== (void *)0x40000000 || (void *) uargs== (void *)0x40000000){
+		kfree(name);
+		return EFAULT;
+	}
 
 	if((char *)program==NULL || (char *)program=='\0'){
 		kfree(name);
 		return EINVAL;
 	}
 
-//	if(length < 2 || length > PATH_MAX){
+	if(length < 2 || length > PATH_MAX){
+		kfree(name);
+		return EINVAL;
+	}
+
+	if((void *) uargs[1] == (void *)0x40000000){
+			kfree(name);
+			return EFAULT;
+	}
+
+//	char *tempo = (char *) kmalloc(sizeof(char) * (totallen+1));;
+//	result = copyinstr((const_userptr_t) uargs[1], tempo, (sizeof(char) * (strlen(uargs[1])+1)), &length);
+//	if (result) {
 //		kfree(name);
-//		return EINVAL;
+//		return EFAULT;
+//	}
+
+//	result = copycheck1((const_userptr_t) uargs[1], PATH_MAX, &length1);
+//	if(result){
+//		return result;
 //	}
 
 	int len = 0;
