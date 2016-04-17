@@ -45,6 +45,7 @@ struct addrspace;
 struct thread;
 struct vnode;
 
+//int proc_count;
 /*
  * Process structure.
  *

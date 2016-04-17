@@ -32,7 +32,7 @@ void pt_init() {
 	for (int i = 0; i < 256; i++) {
 		pt_proc[i]= NULL;
 	}
-
+//	proc_count = 1;
 	p_lock = lock_create("ptable lock");
 }
 
@@ -48,6 +48,7 @@ pid_t insert_process_into_process_table(struct proc *newproc) {
 			newproc->pid = i;
 			newproc->parent_pid = curproc->pid;
 			pt_proc[i] = newproc;
+//			proc_count++;
 			break;
 		}
 	}
@@ -147,11 +148,12 @@ int sys_getpid(int *retval) {
 pid_t
 sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 	//kprintf("\nwaiting on pid %d", pid);
+	*retval = -1;
 	if (pid == curproc->parent_pid || pid == curproc->pid) {
 		return ECHILD;
 	}
 
-	if (options != 0) {
+	if (options != 0 && options != 1000) {
 		return EINVAL;
 	}
 
@@ -167,6 +169,31 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 		//process does not exist (invalid pid)
 		return ESRCH;
 	}
+
+	if(options != 1000){
+	if (pt_proc[pid]->parent_pid == curproc->parent_pid){
+		return ECHILD;
+	}}
+
+//	if (options != 1000){
+//
+//		pid_t my = -1, his = -1;
+//		int flag = 0;
+//		for(int i = 2; i <= proc_count; i++){
+//			if (pt_proc[i]->pid == curproc->pid)
+//				my = pt_proc[i]->parent_pid;
+//			else if (pt_proc[i]->pid == pid){
+//				flag = 1;
+//				his = pt_proc[i]->parent_pid;
+//			}
+//		}
+//		if (flag && (my == his)){
+//			return EFAULT;
+//		}
+////		if (!flag){
+////			return ESRCH;
+////		}
+//	}
 
 	if (pt_proc[pid]->isexited == false) {
 		P(pt_proc[pid]->proc_sem);
