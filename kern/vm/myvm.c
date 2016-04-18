@@ -104,7 +104,7 @@ void vm_bootstrap(void) {
 		coremap[i].addr = 0; //have to store the virtual address here
 	}
 	for (unsigned i = first_free_addr; i < noOfPages; i++) {
-		coremap[i].state = CLEAN;
+		coremap[i].state = FREE;
 		coremap[i].size = 1;
 		coremap[i].addr = 0; //have to store the virtual address here
 		//what will address field have? todo
@@ -134,10 +134,10 @@ vaddr_t alloc_kpages(unsigned npages) {
 				continue;
 			}
 			//npages of free space found.
-			coremap[i].state = DIRTY;
+			coremap[i].state = FIXED;
 			coremap[i].size = npages;
 			for (unsigned j = 1; j < npages; j++) {
-				coremap[i + j].state = DIRTY;
+				coremap[i + j].state = FIXED;
 				coremap[i + j].size = 1;
 			}
 			usedBytes = usedBytes + PAGE_SIZE*npages;
@@ -159,7 +159,7 @@ void free_kpages(vaddr_t addr) {
 
 	int temp = coremap[i].size;
 	for (int j = i; j < i + temp; j++) {
-		coremap[j].state = CLEAN;
+		coremap[j].state = FREE;
 		coremap[j].size = 1;
 	}
 
