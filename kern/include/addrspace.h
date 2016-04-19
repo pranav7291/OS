@@ -63,13 +63,14 @@ struct region{
 	vaddr_t start_vaddr;
 	int size;
 	int permission;
+	int old_permission;
 
 	struct region *next;
 };
 
 
 struct addrspace {
-#if OPT_DUMBVM
+/*#if OPT_DUMBVM
         vaddr_t as_vbase1;
         paddr_t as_pbase1;
         size_t as_npages1;
@@ -77,7 +78,7 @@ struct addrspace {
         paddr_t as_pbase2;
         size_t as_npages2;
         paddr_t as_stackpbase;
-#else
+#else*/
         struct PTE **pte;
         struct region *region;
         vaddr_t stack_ptr;
@@ -85,7 +86,7 @@ struct addrspace {
         vaddr_t heap_top;
 
         /* Put stuff here for your VM system */
-#endif
+/*#endif*/
 };
 
 /*
