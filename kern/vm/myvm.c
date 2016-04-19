@@ -133,6 +133,42 @@ void free_kpages(vaddr_t addr) {
 	return;
 }
 
+paddr_t page_alloc() {
+
+	spinlock_acquire(&allock_lock);
+
+	for (unsigned i = first_free_addr; i < noOfPages; i++){
+		if (coremap[i].state == FREE){
+			coremap[i].state = DIRTY;
+			coremap[i].size = 1;
+			usedBytes = usedBytes + PAGE_SIZE;
+			spinlock_release(&allock_lock);
+			paddr_t returner = PAGE_SIZE*i;
+			return returner;
+		}
+	}
+
+	spinlock_release(&allock_lock);
+	return 0;
+}
+
+void page_free(paddr_t paddr) {
+
+	//todo free the memory
+	spinlock_acquire(&allock_lock);
+	int i = paddr/PAGE_SIZE;
+
+//	int temp = coremap[i].size;
+//	for (int j = i; j < i + temp; j++) {
+	coremap[i].state = FREE;
+	coremap[i].size = 1;
+	}
+
+	usedBytes = usedBytes - PAGE_SIZE;
+	spinlock_release(&allock_lock);
+	return;
+}
+
 unsigned
 int coremap_used_bytes() {
 

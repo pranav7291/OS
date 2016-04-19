@@ -53,6 +53,11 @@ as_create(void)
 	/*
 	 * Initialize as needed.
 	 */
+	as->pages = NULL;
+	as->region = NULL;
+	as->stack_ptr = (vaddr_t)0x80000000;
+	as->heap_bottom = (vaddr_t)0;
+	as->heap_top = (vaddr_t)0;
 
 	return as;
 }
@@ -71,7 +76,50 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	 * Write this.
 	 */
 
-	(void)old;
+	//Copy regions
+	struct region *oldreg = old->region;
+	struct region *temp, *newreg;
+
+	while (oldreg != NULL){
+		if (newas->region == NULL){
+			newas->region = (struct region *) kmalloc(sizeof(struct region));
+			newas->region->next = NULL;
+			newreg = newas->region;
+		}
+		else
+		{
+			for (temp = newas->region; temp->next != NULL; temp = temp->next);
+			newreg = (struct region *) kmalloc(sizeof(struct region));
+			temp->next = newreg;
+		}
+		newreg->start_vaddr = oldreg->start_vaddr;
+		newreg->size = oldreg->size;
+		newreg->permission = oldreg->permission;
+		newreg->next = NULL;
+
+		oldreg = oldreg->next;
+	}
+
+	//Copy pages
+	int result;
+	result = as_prepare_load(newas);	//COW
+	if (result){
+		as_destroy(newas);
+		return ENOMEM;
+	}
+
+	struct PTE *pte_new, *pte_old;
+	pte_new = newas->pages;
+	pte_old = old->pages;
+
+	while (pte_old != NULL) {
+		memmove((void *) PADDR_TO_KVADDR(pte_new->ppn),
+				(const void *) PADDR_TO_KVADDR(pte_old->ppn), PAGE_SIZE);
+		pte_new = pte_new->next;
+		pte_old = pte_old->next;
+	}
+
+//	(void)old;
 
 	*ret = newas;
 	return 0;
@@ -83,6 +131,24 @@ as_destroy(struct addrspace *as)
 	/*
 	 * Clean up as needed.
 	 */
+	if (as != NULL){
+		struct region *reg = as->region;
+		struct region *temp1;
+		while (reg != NULL){
+			temp1 = reg;
+			reg = reg->next;
+			kfree(temp1);
+		}
+
+		struct PTE *pte = as->pages;
+		struct PTE *temp;
+		while (pte != NULL){
+			temp = pte;
+			pte = pte->next;
+			//write free page function
+			kfree(temp);
+		}
+	}
 
 	kfree(as);
 }
