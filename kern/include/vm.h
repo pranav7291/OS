@@ -37,6 +37,8 @@
  */
 
 #include <machine/vm.h>
+#include <spinlock.h>
+
 
 /* Fault-type arguments to vm_fault() */
 #define VM_FAULT_READ        0    /* A read was attempted */
@@ -48,6 +50,15 @@
 #define CLEAN 3
 #define FIXED 4
 
+struct spinlock allock_lock;
+paddr_t first;
+paddr_t last;
+unsigned first_free_addr;
+unsigned noOfPages;
+unsigned usedBytes;
+
+int coremap_size;
+int no_of_coremap_entries;
 
 //added by sammokka
 struct coremap_entry {

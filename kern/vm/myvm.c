@@ -32,50 +32,14 @@
 #include <lib.h>
 #include <spl.h>
 #include <cpu.h>
-#include <spinlock.h>
 #include <proc.h>
 #include <current.h>
 #include <mips/tlb.h>
 #include <addrspace.h>
 #include <vm.h>
 
-/*
- * Dumb MIPS-only "VM system" that is intended to only be just barely
- * enough to struggle off the ground. You should replace all of this
- * code while doing the VM assignment. In fact, starting in that
- * assignment, this file is not included in your kernel!
- *
- * NOTE: it's been found over the years that students often begin on
- * the VM assignment by copying dumbvm.c and trying to improve it.
- * This is not recommended. dumbvm is (more or less intentionally) not
- * a good design reference. The first recommendation would be: do not
- * look at dumbvm at all. The second recommendation would be: if you
- * do, be sure to review it from the perspective of comparing it to
- * what a VM system is supposed to do, and understanding what corners
- * it's cutting (there are many) and why, and more importantly, how.
- */
-
-/* under dumbvm, always have 72k of user stack */
-/* (this must be > 64K so argument blocks of size ARG_MAX will fit) */
-#define DUMBVM_STACKPAGES    18
-
-/*
- * Wrap ram_stealmem in a spinlock.
- */
-//static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 struct coremap_entry* coremap;
 
-struct spinlock allock_lock;
-
-paddr_t first;
-paddr_t last;
-unsigned first_free_addr;
-unsigned noOfPages;
-unsigned usedBytes;
-
-int coremap_size;
-int no_of_coremap_entries;
-paddr_t lowest_available = 0;
 void vm_bootstrap(void) {
 	last = ram_getsize();
 	first = ram_getfirstfree();
