@@ -53,7 +53,8 @@ as_create(void)
 	/*
 	 * Initialize as needed.
 	 */
-	as->pages = NULL;
+	//as->pages = NULL;
+	as->pte = (struct PTE **) kmalloc(sizeof(struct PTE **) * 1024);
 	as->region = NULL;
 	as->stack_ptr = (vaddr_t)0x80000000;
 	as->heap_bottom = (vaddr_t)0;

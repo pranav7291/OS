@@ -62,7 +62,7 @@ void vm_bootstrap(void) {
 
 	first_free_addr = first / PAGE_SIZE;
 	usedBytes = 0;
-	for(unsigned i = 0; i>first_free_addr; i++) {
+	for(unsigned i = 0; i<first_free_addr; i++) {
 		coremap[i].state = FIXED;
 		coremap[i].size = 1;
 		coremap[i].addr = 0; //have to store the virtual address here
