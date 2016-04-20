@@ -48,10 +48,16 @@ struct vnode;
  * You write this.
  */
 
+struct permission{
+	bool read;
+	bool write;
+	bool execute;
+};
+
 struct PTE{
 	vaddr_t vpn;
 	paddr_t ppn;
-	int permission;	//3 bits, how? R,W,E
+	struct permission;	//3 bits, how? R,W,E
 	bool state;		//Is the pp located in memory or disk
 	bool valid;		//has a physical page been allocated for this virtual page or not
 	bool referenced;	//has the page been read or written to recently
@@ -62,8 +68,8 @@ struct PTE{
 struct region{
 	vaddr_t start_vaddr;
 	int size;
-	int permission;
-	int old_permission;
+	struct permission permission;
+	struct permission old_permission;
 
 	struct region *next;
 };

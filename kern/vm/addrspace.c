@@ -175,12 +175,15 @@ as_destroy(struct addrspace *as)
 				for (int j = 0; j < 1024; j++) {
 					if (pte[i][j] != NULL) {
 						kfree(pte[i][j]);	//kfree PTE
+						pte[i][j] = NULL;
 					}
 				}
 				kfree(pte[i]);	//kfree second level
+				pte[i] = NULL;
 			}
 		}
 		kfree(pte);	//kfree first level
+		pte = NULL;
 	}
 
 	kfree(as);
@@ -235,34 +238,55 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	 * Write this.
 	 */
 
-	(void)as;
-	(void)vaddr;
-	(void)memsize;
-	(void)readable;
-	(void)writeable;
-	(void)executable;
-	return ENOSYS;
+//	(void)as;
+//	(void)vaddr;
+//	(void)memsize;
+//	(void)readable;
+//	(void)writeable;
+//	(void)executable;
+//	return ENOSYS;
+
+	//Aligning the region
+	memsize += vaddr & ~(vaddr_t) PAGE_FRAME;
+	vaddr &= PAGE_FRAME;
+	memsize = (memsize + PAGE_SIZE - 1) & PAGE_FRAME;
+
+	size_t num_pages;
+	num_pages = memsize / PAGE_SIZE;
+
+	struct region * regionitr, *temp;
+	regionitr = as->region;
+	for (temp = as->region; temp->next != NULL; temp = temp->next);
+	if (as->region == NULL){
+		as->region = (struct region *) kmalloc(sizeof(struct region));
+		as->region->next = NULL;
+	}
 }
 
 int
 as_prepare_load(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
-
-	(void)as;
+	struct region * regionitr;
+	regionitr = as->region;
+	while(regionitr != NULL){
+		regionitr->old_permission = regionitr->permission;
+		regionitr->permission.read = FALSE;	//write + execute
+		regionitr->permission.write = TRUE;
+		regionitr->permission.execute = TRUE;
+		regionitr = regionitr->next;
+	}
 	return 0;
 }
 
 int
 as_complete_load(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
-
-	(void)as;
+	struct region * regionitr;
+	regionitr = as->region;
+	while(regionitr != NULL){
+		regionitr->permission = regionitr->old_permission;
+		regionitr = regionitr->next;
+	}
 	return 0;
 }
 
