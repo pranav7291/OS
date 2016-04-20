@@ -73,13 +73,13 @@ void vm_bootstrap(void) {
 		coremap[i].addr = 0; //have to store the virtual address here
 		//what will address field have? todo
 	}
-	spinlock_init(&allock_lock);
+	spinlock_init(&coremap_spinlock);
 }
 
 /* Allocate/free some kernel-space virtual pages */
 vaddr_t alloc_kpages(unsigned npages) {
 
-	spinlock_acquire(&allock_lock);
+	spinlock_acquire(&coremap_spinlock);
 
 //check for a free space
 	for (unsigned i = first_free_addr; i < noOfPages; i++) {
@@ -105,19 +105,19 @@ vaddr_t alloc_kpages(unsigned npages) {
 				coremap[i + j].size = 1;
 			}
 			usedBytes = usedBytes + PAGE_SIZE*npages;
-			spinlock_release(&allock_lock);
+			spinlock_release(&coremap_spinlock);
 			vaddr_t returner = PADDR_TO_KVADDR(PAGE_SIZE*i);
 			return returner;
 		}
 	}
-	spinlock_release(&allock_lock);
+	spinlock_release(&coremap_spinlock);
 	return 0;
 }
 
 void free_kpages(vaddr_t addr) {
 
 	//todo free the memory
-	spinlock_acquire(&allock_lock);
+	spinlock_acquire(&coremap_spinlock);
 	paddr_t paddr = KVADDR_TO_PADDR(addr);
 	int i = paddr/PAGE_SIZE;
 
@@ -129,62 +129,109 @@ void free_kpages(vaddr_t addr) {
 
 	usedBytes = usedBytes - temp * PAGE_SIZE;
 	//iterate over the coremap to find the address
-	spinlock_release(&allock_lock);
+	spinlock_release(&coremap_spinlock);
 	return;
 }
 
 paddr_t page_alloc() {
 
-	spinlock_acquire(&allock_lock);
+	spinlock_acquire(&coremap_spinlock);
 
 	for (unsigned i = first_free_addr; i < noOfPages; i++){
 		if (coremap[i].state == FREE){
 			coremap[i].state = DIRTY;
 			coremap[i].size = 1;
 			usedBytes = usedBytes + PAGE_SIZE;
-			spinlock_release(&allock_lock);
+			spinlock_release(&coremap_spinlock);
 			paddr_t returner = PAGE_SIZE*i;
 			return returner;
 		}
 	}
 
-	spinlock_release(&allock_lock);
+	spinlock_release(&coremap_spinlock);
 	return 0;
 }
 
 void page_free(paddr_t paddr) {
 
 	//todo free the memory
-	spinlock_acquire(&allock_lock);
+	spinlock_acquire(&coremap_spinlock);
 	int i = paddr/PAGE_SIZE;
 
 	coremap[i].state = FREE;
 	coremap[i].size = 1;
 
 	usedBytes = usedBytes - PAGE_SIZE;
-	spinlock_release(&allock_lock);
+	spinlock_release(&coremap_spinlock);
 	return;
 }
 
 unsigned
 int coremap_used_bytes() {
-
-	/* dumbvm doesn't track page allocations. Return 0 so that khu works. */
-
 	return usedBytes;
 }
 
 void vm_tlbshootdown_all(void) {
-	panic("myvm tried to do tlb shootdown?!\n");
+	//panic("myvm tried to do tlb shootdown?!\n");
+	spinlock_acquire(&coremap_spinlock);
+	for (int i = 0; i < NUM_TLB; i++){
+		tlb_write(TLBHI_INVALID(i),TLBLO_INVALID(),i);
+	}
+	spinlock_release(&coremap_spinlock);
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {
-	(void) ts;
-	panic("myvm tried to do tlb shootdown?!\n");
+	uint32_t lo, hi;
+	int tlb_ind;
+	spinlock_acquire(&coremap_spinlock);
+	tlb_ind = ts->tlb_indicator;
+	tlb_read(&hi, &lo, tlb_ind);
+	if(lo & TLBLO_VALID){
+		//todo remove entry from coremap maybe
+	}
+	tlb_write(TLBHI_INVALID(tlb_ind),TLBLO_INVALID(),tlb_ind);
+	spinlock_release(&coremap_spinlock);
 }
 
 int vm_fault(int faulttype, vaddr_t faultaddress) {
-	(void) faulttype;
-	(void) faultaddress;
+
+	//1. Check if the fault address is valid
+
+	vaddr_t vbase, vtop;
+	bool fheap = FALSE, fstack = FALSE;
+	struct region *fault_reg = NULL;
+	struct addrspace *as = curproc->p_addrspace;
+	struct region *reg = as->region;
+	if(faultaddress >= as->heap_bottom && faultaddress < as->heap_top){
+		//fault address is in heap
+		fheap = TRUE;
+	}
+	else if(faultaddress >= as->stack_ptr && faultaddress <= (vaddr_t)0x80000000){
+		//fault address is in heap
+		fstack = TRUE;
+	}
+	else{//search regions
+		while (reg != NULL) {
+			vbase = reg->base_vaddr;
+			vtop = vbase + (PAGE_SIZE * reg->num_pages);
+			if (faultaddress >= vbase && faultaddress < vtop){
+				fault_reg = reg;
+				break;
+			}
+			reg = reg->next;
+		}
+		if(fault_reg == NULL){
+			return EFAULT;
+		}
+	}
+
+	//2. Check if the operation is valid by checking the page permission
+	//first check if present in the page table, if not, create page
+	if(as->pte)
+	//3. Check if it is TLB fault, Page fault, or both. This will be (partially) found out by step 2
+
+	//4. If it is Page Fault, allocate physical page if needed.
+
+	//5. Update TLB entry
 	return 0;
 }

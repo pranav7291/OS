@@ -50,7 +50,7 @@
 #define CLEAN 3
 #define FIXED 4
 
-struct spinlock allock_lock;
+struct spinlock coremap_spinlock;
 paddr_t first;
 paddr_t last;
 unsigned first_free_addr;

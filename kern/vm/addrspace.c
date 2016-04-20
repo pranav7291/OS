@@ -76,10 +76,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		return ENOMEM;
 	}
 
-	/*
-	 * Write this.
-	 */
-
 	//Copy regions
 	struct region *old_region = old_addrspace->region;
 	struct region *temp, *newreg;
@@ -94,8 +90,8 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			newreg = (struct region *) kmalloc(sizeof(struct region));
 			temp->next = newreg;
 		}
-		newreg->start_vaddr = old_region->start_vaddr;
-		newreg->size = old_region->size;
+		newreg->base_vaddr = old_region->base_vaddr;
+		newreg->num_pages = old_region->num_pages;
 		newreg->permission = old_region->permission;
 		newreg->old_permission = old_region->old_permission;
 		newreg->next = NULL;
@@ -234,18 +230,6 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 		 int readable, int writeable, int executable)
 {
-	/*
-	 * Write this.
-	 */
-
-//	(void)as;
-//	(void)vaddr;
-//	(void)memsize;
-//	(void)readable;
-//	(void)writeable;
-//	(void)executable;
-//	return ENOSYS;
-
 	//Aligning the region
 	memsize += vaddr & ~(vaddr_t) PAGE_FRAME;
 	vaddr &= PAGE_FRAME;
@@ -254,13 +238,29 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	size_t num_pages;
 	num_pages = memsize / PAGE_SIZE;
 
-	struct region * regionitr, *temp;
-	regionitr = as->region;
-	for (temp = as->region; temp->next != NULL; temp = temp->next);
-	if (as->region == NULL){
+	struct region * regionitr, *reg_end;
+
+	if(as->region == NULL){
 		as->region = (struct region *) kmalloc(sizeof(struct region));
 		as->region->next = NULL;
+		reg_end = as->region;
 	}
+	else{
+		for (reg_end = as->region; reg_end->next != NULL; reg_end = reg_end->next);
+		reg_end->next = (struct region *) kmalloc(sizeof(struct region));
+		reg_end = reg_end->next;
+		reg_end->next = NULL;
+	}
+	reg_end->num_pages = num_pages;
+	reg_end->permission = 7 & (readable | writeable | executable);
+	reg_end->base_vaddr = vaddr;
+
+	as->heap_bottom = vaddr + (PAGE_SIZE * num_pages);
+	as->heap_top = as->heap_bottom;
+
+	//todo do I create heap and stack here???
+
+	return 0;
 }
 
 int
@@ -270,11 +270,10 @@ as_prepare_load(struct addrspace *as)
 	regionitr = as->region;
 	while(regionitr != NULL){
 		regionitr->old_permission = regionitr->permission;
-		regionitr->permission.read = FALSE;	//write + execute
-		regionitr->permission.write = TRUE;
-		regionitr->permission.execute = TRUE;
+		regionitr->permission = 7 & (010 | 001);	//write + execute
 		regionitr = regionitr->next;
 	}
+	//todo which page table entries do I setup here?? page table entries for each region
 	return 0;
 }
 
@@ -287,21 +286,15 @@ as_complete_load(struct addrspace *as)
 		regionitr->permission = regionitr->old_permission;
 		regionitr = regionitr->next;
 	}
+	//todo invalidate TLB entries ???
 	return 0;
 }
 
 int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
-	/*
-	 * Write this.
-	 */
-
-	(void)as;
-
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK;
-
+	as->stack_ptr = USERSTACK;
 	return 0;
 }
-
