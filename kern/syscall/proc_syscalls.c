@@ -24,7 +24,7 @@ struct lock *p_lock;
 
 struct proc *pt_proc[256];
 
-char *helper[4000];
+//char *helper[4000];
 
 //initializes file table
 void pt_init() {
@@ -306,6 +306,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	}
 
 	char *buf = (char *) kmalloc(sizeof(char) * (totallen+1));
+	char **ptrbuf = (char **) kmalloc(sizeof(char **) * x);
 	char *temp = buf;
 	while (uargs[i] != NULL ) {
 		//		args[i] = (char *) kmalloc(sizeof(char) * PATH_MAX);
@@ -423,7 +424,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 //		temp1 = (char *)stackptr;
 //		temp1 = temp1 + (len * sizeof(char));
 		temp1 = temp1 + (act);
-		helper[i] = (char *)stackptr;
+		ptrbuf[i] = (char *)stackptr;
 
 		i++;
 	}
@@ -433,7 +434,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	//Copying the pointers
 	for(i = argmax - 1; i >= 0; i--){
 		stackptr = stackptr - sizeof(char *);
-		result = copyout((const void *)(helper + i), (userptr_t)stackptr, sizeof(char *));
+		result = copyout((const void *)(ptrbuf + i), (userptr_t)stackptr, sizeof(char *));
 		if (result){
 			kfree(name);
 			kfree(buf);
