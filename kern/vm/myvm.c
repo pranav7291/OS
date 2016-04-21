@@ -202,38 +202,74 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	struct region *fault_reg = NULL;
 	struct addrspace *as = curproc->p_addrspace;
 	struct region *reg = as->region;
-	if(faultaddress >= as->heap_bottom && faultaddress < as->heap_top){
+	if (faultaddress >= as->heap_bottom && faultaddress < as->heap_top) {
 		//fault address is in heap
 		fheap = TRUE;
-	}
-	else if(faultaddress >= as->stack_ptr && faultaddress <= (vaddr_t)0x80000000){
+	} else if (faultaddress >= as->stack_ptr
+			&& faultaddress <= (vaddr_t) 0x80000000) {
 		//fault address is in heap
 		fstack = TRUE;
-	}
-	else{//search regions
+	} else { //search regions
 		while (reg != NULL) {
 			vbase = reg->base_vaddr;
 			vtop = vbase + (PAGE_SIZE * reg->num_pages);
-			if (faultaddress >= vbase && faultaddress < vtop){
+			if (faultaddress >= vbase && faultaddress < vtop) {
 				fault_reg = reg;
 				break;
 			}
 			reg = reg->next;
 		}
-		if(fault_reg == NULL){
+		if (fault_reg == NULL) {
 			return EFAULT;
 		}
 	}
 
 	//2. Check if the operation is valid by checking the page permission
 	//first check if present in the page table, if not, create page
-	if(*(as->pte + (faultaddress >> 22)) != NULL){
-		*(as->pte + (faultaddress >> 22))
+
+	unsigned mask_for_first_10_bits = 0xFFC00000;
+	unsigned first_10_bits = faultaddress & mask_for_first_10_bits;
+
+	unsigned mask_for_second_10_bits = 0x003FF000;
+	unsigned next_10_bits = faultaddress & mask_for_second_10_bits;
+
+	if(as->pte[first_10_bits]!=NULL) {
+		int tlb_index = -1;
+		if(faulttype==VM_FAULT_READONLY) {
+			tlb_index = tlb_probe(faultaddress, 0);
+		}
+		//look for second level
+		if (as->pte[first_10_bits][next_10_bits] != NULL) {
+			//if not null, you get your page table entry here.
+			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits]->ppn;
+			vaddr_t virt_page_no = as->pte[first_10_bits][next_10_bits]->vpn;
+			if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
+				tlb_write(phy_page_no, virt_page_no, tlb_index);
+			} else {
+				tlb_random(phy_page_no, virt_page_no);
+			}
+		} else {
+			//this is a page fault. Service it.
+			//no page table entry here, allocate memory for page table entry
+			paddr_t paddr = page_alloc();
+			if (paddr == 0) {
+				return EFAULT; //out of pages
+			}
+			struct PTE *page_fault_pte;
+			page_fault_pte = kmalloc(sizeof(struct PTE));
+			page_fault_pte->vpn = faultaddress;
+			page_fault_pte->ppn = paddr;
+			as->pte[first_10_bits][next_10_bits] = page_fault_pte;
+			//todo set permissions also
+			if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
+				tlb_write(paddr, faultaddress, tlb_index);
+			} else {
+				tlb_random(paddr, faultaddress);
+			}
+		}
+	} else {
+		PANIC("Null pointer sammokka- kmalloc not done for first 10 bits index ");
 	}
-	//3. Check if it is TLB fault, Page fault, or both. This will be (partially) found out by step 2
 
-	//4. If it is Page Fault, allocate physical page if needed.
-
-	//5. Update TLB entry
 	return 0;
 }
