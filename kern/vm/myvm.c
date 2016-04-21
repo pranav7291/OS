@@ -227,7 +227,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 	//2. Check if the operation is valid by checking the page permission
 	//first check if present in the page table, if not, create page
-	if(as->pte)
+	if(*(as->pte + (faultaddress >> 22)) != NULL){
+		*(as->pte + (faultaddress >> 22))
+	}
 	//3. Check if it is TLB fault, Page fault, or both. This will be (partially) found out by step 2
 
 	//4. If it is Page Fault, allocate physical page if needed.

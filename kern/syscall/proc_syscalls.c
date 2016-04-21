@@ -470,3 +470,38 @@ int sys_exit(int code) {
 	thread_exit();
 	return 0;
 }
+
+int sys_sbrk(int amt, int *retval){
+	struct addrspace * as = curproc->p_addrspace;
+	vaddr_t heap_top = curproc->p_addrspace->heap_top;
+	vaddr_t heap_bottom = curproc->p_addrspace->heap_bottom;
+	*retval = -1;
+	if(amt == 0){
+		*retval = heap_top;
+		return 0;
+	}
+
+	if((amt % 4) != 0){//check if it's aligned by 4
+		return EINVAL;
+	}
+
+	if(heap_bottom > (heap_top + amt)){
+		return EINVAL;
+	}
+
+	if(amt > (as->stack_ptr - as->heap_top)){
+		return ENOMEM;
+	}
+
+	if(heap_top > (heap_top + amt)){//heap size decreased
+		vm_tlbshootdown_all();
+		*retval = heap_top;
+		heap_top += amt;
+	}
+	else{
+		*retval = heap_top;
+		heap_top += amt;
+	}
+	curproc->p_addrspace->heap_top = heap_top;
+	return 0;
+}
