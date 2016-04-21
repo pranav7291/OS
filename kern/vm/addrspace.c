@@ -60,7 +60,7 @@ as_create(void)
 		return NULL;
 	}
 	for (int i = 0; i < 1024; i++){
-		as->pte + i = NULL;
+		as->pte[i] = NULL;
 	}
 	as->region = NULL;
 	as->stack_ptr = (vaddr_t)0x80000000;
@@ -90,7 +90,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			new_as->region = (struct region *) kmalloc(sizeof(struct region));
 			if (new_as->region == NULL) {
 				as_destroy(new_as);
-				return NULL;
+				return ENOMEM;
 			}
 			new_as->region->next = NULL;
 			newreg = new_as->region;
@@ -99,7 +99,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			newreg = (struct region *) kmalloc(sizeof(struct region));
 			if(newreg==NULL) {
 				as_destroy(new_as);
-				return NULL;
+				return ENOMEM;
 			}
 			temp->next = newreg;
 		}
@@ -120,14 +120,14 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			newpte[i] = (struct PTE *) kmalloc(sizeof(struct PTE *)); //second level kmalloc
 			if (newpte[i] == NULL) {
 				as_destroy(new_as);
-				return NULL;
+				return ENOMEM;
 			}
 			for (int j = 0; j < 1024; j++) {
 				if (oldpte[i][j] != NULL) {
 					newpte[i][j] = kmalloc(sizeof(struct PTE)); //struct kmalloc
 					if (newpte[i][j] == NULL) {
 						as_destroy(new_as);
-						return NULL;
+						return ENOMEM;
 					}
 					newpte[i][j]->vpn = oldpte[i][j]->vpn;
 					newpte[i][j]->permission = oldpte[i][j]->permission;
@@ -246,7 +246,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 		as->region = (struct region *) kmalloc(sizeof(struct region));
 		if (as->region == NULL) {
 			as_destroy(as);
-			return NULL;
+			return ENOMEM;
 		}
 		as->region->next = NULL;
 		reg_end = as->region;
@@ -257,7 +257,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 		reg_end->next = (struct region *) kmalloc(sizeof(struct region));
 		if (reg_end->next == NULL) {
 			as_destroy(as);
-			return NULL;
+			return ENOMEM;
 		}
 		reg_end = reg_end->next;
 		reg_end->next = NULL;

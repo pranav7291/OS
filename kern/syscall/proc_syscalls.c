@@ -481,26 +481,28 @@ int sys_sbrk(int amt, int *retval){
 		return 0;
 	}
 
-	if((amt % 4) != 0){//check if it's aligned by 4
+	unsigned _amt = (unsigned) amt;
+
+	if((_amt % 4) != 0){//check if it's aligned by 4
 		return EINVAL;
 	}
 
-	if(heap_bottom > (heap_top + amt)){
+	if(heap_bottom > (heap_top + _amt)){
 		return EINVAL;
 	}
 
-	if(amt > (as->stack_ptr - as->heap_top)){
+	if(_amt > (as->stack_ptr - as->heap_top)){
 		return ENOMEM;
 	}
 
-	if(heap_top > (heap_top + amt)){//heap size decreased
+	if(heap_top > (heap_top + _amt)){//heap size decreased
 		vm_tlbshootdown_all();
 		*retval = heap_top;
-		heap_top += amt;
+		heap_top += _amt;
 	}
 	else{
 		*retval = heap_top;
-		heap_top += amt;
+		heap_top += _amt;
 	}
 	curproc->p_addrspace->heap_top = heap_top;
 	return 0;
