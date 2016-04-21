@@ -234,29 +234,42 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	unsigned next_10_bits = faultaddress & mask_for_second_10_bits;
 
 	if(as->pte[first_10_bits]!=NULL) {
+		int tlb_index = -1;
+		if(faulttype==VM_FAULT_READONLY) {
+			tlb_index = tlb_probe(faultaddress, 0);
+		}
 		//look for second level
-		if(as->pte[first_10_bits][next_10_bits]!=NULL) {
+		if (as->pte[first_10_bits][next_10_bits] != NULL) {
 			//if not null, you get your page table entry here.
 			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits]->ppn;
 			vaddr_t virt_page_no = as->pte[first_10_bits][next_10_bits]->vpn;
-			//put vaddr, paddr into tlb
+			if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
+				tlb_write(phy_page_no, virt_page_no, tlb_index);
+			} else {
+				tlb_random(phy_page_no, virt_page_no);
+			}
 		} else {
+			//this is a page fault. Service it.
 			//no page table entry here, allocate memory for page table entry
-			//get the vaddr from the allocate function and that is the vaddr for the pte
-
-
-			//if the alloc function returns 0, it means out of pages. return efault
+			paddr_t paddr = page_alloc();
+			if (paddr == 0) {
+				return EFAULT; //out of pages
+			}
+			struct PTE *page_fault_pte;
+			page_fault_pte = kmalloc(sizeof(struct PTE));
+			page_fault_pte->vpn = faultaddress;
+			page_fault_pte->ppn = paddr;
+			as->pte[first_10_bits][next_10_bits] = page_fault_pte;
+			//todo set permissions also
+			if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
+				tlb_write(paddr, faultaddress, tlb_index);
+			} else {
+				tlb_random(paddr, faultaddress);
+			}
 		}
-		//do what you want with the page table entry here
-
 	} else {
-		//dokmalloc here
+		PANIC("Null pointer sammokka- kmalloc not done for first 10 bits index ");
 	}
 
-	//3. Check if it is TLB fault, Page fault, or both. This will be (partially) found out by step 2
-
-	//4. If it is Page Fault, allocate physical page if needed.
-
-	//5. Update TLB entry
 	return 0;
 }

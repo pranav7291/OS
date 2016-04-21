@@ -112,26 +112,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		old_region = old_region->next;
 	}
 
-//	//Copy pages
-//	int result;
-//	result = as_prepare_load(newas);	//COW
-//	if (result){
-//		as_destroy(newas);
-//		return ENOMEM;
-//	}
-//
-//	struct PTE *pte_new, *pte_old;
-//	pte_new = newas->pages;
-//	pte_old = old->pages;
-//
-//	while (pte_old != NULL) {
-//		memmove((void *) PADDR_TO_KVADDR(pte_new->ppn),
-//				(const void *) PADDR_TO_KVADDR(pte_old->ppn), PAGE_SIZE);
-//		pte_new = pte_new->next;
-//		pte_old = pte_old->next;
-//	}
-
-//Copy pte
+	//copy PTEs
 	struct PTE **oldpte = old_addrspace->pte;
 	struct PTE **newpte = new_as->pte;
 	for (int i = 0; i < 1024; i++) {
