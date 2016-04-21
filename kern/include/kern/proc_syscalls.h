@@ -26,3 +26,5 @@ pid_t
 sys_waitpid(pid_t pid, int *status, int options, int *retval);
 
 int sys_exit(pid_t pid);
+
+int sys_sbrk(int amt, int *retval);
