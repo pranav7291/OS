@@ -37,6 +37,8 @@
 #include <mips/tlb.h>
 #include <addrspace.h>
 #include <vm.h>
+#include <spl.h>
+
 
 struct coremap_entry* coremap;
 
@@ -195,33 +197,36 @@ void vm_tlbshootdown(const struct tlbshootdown *ts) {
 
 int vm_fault(int faulttype, vaddr_t faultaddress) {
 
-	//1. Check if the fault address is valid
+	//1. Check if the fault address is valid -
 
 	vaddr_t vbase, vtop;
-	bool fheap = FALSE, fstack = FALSE;
-	struct region *fault_reg = NULL;
+	bool fheap = false;
+	bool fstack = false;
+	bool fregion = false;
+//	struct region *fault_reg = NULL;
 	struct addrspace *as = curproc->p_addrspace;
 	struct region *reg = as->region;
 	if (faultaddress >= as->heap_bottom && faultaddress < as->heap_top) {
 		//fault address is in heap
-		fheap = TRUE;
+		fheap = true;
 	} else if (faultaddress >= as->stack_ptr
 			&& faultaddress <= (vaddr_t) 0x80000000) {
 		//fault address is in heap
-		fstack = TRUE;
+		fstack = true;
 	} else { //search regions
 		while (reg != NULL) {
 			vbase = reg->base_vaddr;
 			vtop = vbase + (PAGE_SIZE * reg->num_pages);
 			if (faultaddress >= vbase && faultaddress < vtop) {
-				fault_reg = reg;
+//				fault_reg = reg;
+				fregion  = true;
 				break;
 			}
 			reg = reg->next;
 		}
-		if (fault_reg == NULL) {
-			return EFAULT;
-		}
+	}
+	if (!(fregion | fheap | fstack)) {
+		return EFAULT;
 	}
 
 	//2. Check if the operation is valid by checking the page permission
@@ -229,25 +234,24 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 	unsigned mask_for_first_10_bits = 0xFFC00000;
 	unsigned first_10_bits = faultaddress & mask_for_first_10_bits;
+	first_10_bits = first_10_bits >> 22;
 
 	unsigned mask_for_second_10_bits = 0x003FF000;
 	unsigned next_10_bits = faultaddress & mask_for_second_10_bits;
+	next_10_bits = next_10_bits >> 12;
 
+	int tlb_index = -1;
+	if (faulttype == VM_FAULT_READONLY) {
+		tlb_index = tlb_probe(faultaddress, 0);
+	}
 	if(as->pte[first_10_bits]!=NULL) {
-		int tlb_index = -1;
-		if(faulttype==VM_FAULT_READONLY) {
-			tlb_index = tlb_probe(faultaddress, 0);
-		}
+
 		//look for second level
-		if (as->pte[first_10_bits][next_10_bits] != NULL) {
+		if (as->pte[first_10_bits][next_10_bits].vpn == faultaddress) {
 			//if not null, you get your page table entry here.
-			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits]->ppn;
-			vaddr_t virt_page_no = as->pte[first_10_bits][next_10_bits]->vpn;
-			if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
-				tlb_write(phy_page_no, virt_page_no, tlb_index);
-			} else {
-				tlb_random(phy_page_no, virt_page_no);
-			}
+			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
+			vaddr_t virt_page_no = as->pte[first_10_bits][next_10_bits].vpn;
+
 		} else {
 			//this is a page fault. Service it.
 			//no page table entry here, allocate memory for page table entry
@@ -259,7 +263,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			page_fault_pte = kmalloc(sizeof(struct PTE));
 			page_fault_pte->vpn = faultaddress;
 			page_fault_pte->ppn = paddr;
-			as->pte[first_10_bits][next_10_bits] = page_fault_pte;
+			as->pte[first_10_bits][next_10_bits] = *page_fault_pte;
 			//todo set permissions also
 			if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
 				tlb_write(paddr, faultaddress, tlb_index);
@@ -268,7 +272,26 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			}
 		}
 	} else {
-		PANIC("Null pointer sammokka- kmalloc not done for first 10 bits index ");
+
+		//	panic("whooaaaa");
+		as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
+		//this is a page fault. Service it.
+		//no page table entry here, allocate memory for page table entry
+		paddr_t paddr = page_alloc();
+		if (paddr == 0) {
+			return EFAULT; //out of pages
+		}
+		struct PTE *page_fault_pte;
+		page_fault_pte = kmalloc(sizeof(struct PTE));
+		page_fault_pte->vpn = faultaddress;
+		page_fault_pte->ppn = paddr;
+		as->pte[first_10_bits][next_10_bits] = *page_fault_pte;
+		//todo set permissions also
+		if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
+			tlb_write(paddr, faultaddress, tlb_index);
+		} else {
+			tlb_random(paddr, faultaddress);
+		}
 	}
 
 	return 0;
