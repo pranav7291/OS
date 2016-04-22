@@ -259,10 +259,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			as->pte[first_10_bits][next_10_bits].ppn = paddr;
 			as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
 			//random tlb write
-		} else {
+		} /*else {
 			//random tlb write
 			panic("pranav");
-		}
+		}*/
 	} else {
 		//	panic("whooaaaa");
 		as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
@@ -282,14 +282,14 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
 		//random write
 		int x = splhigh();
-		tlb_random(paddr, faultaddress);
-		splx(x);
-	} else {
-		int x = splhigh();
-		tlb_index = tlb_probe(faultaddress, 0);
 		paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
-		tlb_index = tlb_probe(faultaddress, 0);
-		tlb_write(phy_page_no, faultaddress, tlb_index);
+		tlb_random((faultaddress & PAGE_FRAME ), ((phy_page_no & PAGE_FRAME)| TLBLO_VALID));
+		splx(x);
+	} else if (faulttype == VM_FAULT_READONLY){
+		int x = splhigh();
+		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
+		paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
+		tlb_write((faultaddress & PAGE_FRAME), ((phy_page_no & PAGE_FRAME) | TLBLO_DIRTY | TLBLO_VALID), tlb_index);
 		splx(x);
 	}
 
