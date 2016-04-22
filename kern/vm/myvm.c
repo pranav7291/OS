@@ -105,7 +105,7 @@ vaddr_t alloc_kpages(unsigned npages) {
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[i + j].state = FIXED;
 				coremap[i + j].size = 1;
-				memset((void *)((i + j)*PAGE_SIZE),0,PAGE_SIZE);
+				memset((void *)PADDR_TO_KVADDR(((i + j)*PAGE_SIZE)),0,PAGE_SIZE);
 			}
 			usedBytes = usedBytes + PAGE_SIZE*npages;
 			spinlock_release(&coremap_spinlock);
@@ -144,6 +144,7 @@ paddr_t page_alloc() {
 		if (coremap[i].state == FREE){
 			coremap[i].state = DIRTY;
 			coremap[i].size = 1;
+			memset((void *)PADDR_TO_KVADDR(((i)*PAGE_SIZE)),0,PAGE_SIZE);
 
 			usedBytes = usedBytes + PAGE_SIZE;
 			spinlock_release(&coremap_spinlock);
@@ -178,9 +179,11 @@ int coremap_used_bytes() {
 void vm_tlbshootdown_all(void) {
 	//panic("myvm tried to do tlb shootdown?!\n");
 	spinlock_acquire(&coremap_spinlock);
+	int x = splhigh();
 	for (int i = 0; i < NUM_TLB; i++){
 		tlb_write(TLBHI_INVALID(i),TLBLO_INVALID(),i);
 	}
+	splx(x);
 	spinlock_release(&coremap_spinlock);
 }
 
@@ -189,11 +192,13 @@ void vm_tlbshootdown(const struct tlbshootdown *ts) {
 	int tlb_ind;
 	spinlock_acquire(&coremap_spinlock);
 	tlb_ind = ts->tlb_indicator;
+	int x = splhigh();
 	tlb_read(&hi, &lo, tlb_ind);
 	if(lo & TLBLO_VALID){
 		//todo remove entry from coremap maybe
 	}
 	tlb_write(TLBHI_INVALID(tlb_ind),TLBLO_INVALID(),tlb_ind);
+	splx(x);
 	spinlock_release(&coremap_spinlock);
 }
 
@@ -201,35 +206,35 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 	//1. Check if the fault address is valid -
 
-	vaddr_t vbase, vtop;
-	bool fheap = false;
-	bool fstack = false;
-	bool fregion = false;
+//	vaddr_t vbase, vtop;
+//	bool fheap = false;
+//	bool fstack = false;
+//	bool fregion = false;
 //	struct region *fault_reg = NULL;
 	struct addrspace *as = curproc->p_addrspace;
-	struct region *reg = as->region;
-	if (faultaddress >= as->heap_bottom && faultaddress < as->heap_top) {
-		//fault address is in heap
-		fheap = true;
-	} else if (faultaddress >= as->stack_ptr
-			&& faultaddress <= (vaddr_t) 0x80000000) {
-		//fault address is in heap
-		fstack = true;
-	} else { //search regions
-		while (reg != NULL) {
-			vbase = reg->base_vaddr;
-			vtop = vbase + (PAGE_SIZE * reg->num_pages);
-			if (faultaddress >= vbase && faultaddress < vtop) {
-//				fault_reg = reg;
-				fregion  = true;
-				break;
-			}
-			reg = reg->next;
-		}
-	}
-	if (!(fregion | fheap | fstack)) {
-		return EFAULT;
-	}
+//	struct region *reg = as->region;
+//	if (faultaddress >= as->heap_bottom && faultaddress < as->heap_top) {
+//		//fault address is in heap
+//		fheap = true;
+//	} else if (faultaddress >= as->stack_ptr
+//			&& faultaddress <= (vaddr_t) 0x80000000) {
+//		//fault address is in heap
+//		fstack = true;
+//	} else { //search regions
+//		while (reg != NULL) {
+//			vbase = reg->base_vaddr;
+//			vtop = vbase + (PAGE_SIZE * reg->num_pages);
+//			if (faultaddress >= vbase && faultaddress < vtop) {
+////				fault_reg = reg;
+//				fregion  = true;
+//				break;
+//			}
+//			reg = reg->next;
+//		}
+//	}
+//	if (!(fregion | fheap | fstack)) {
+//		return EFAULT;
+//	}
 
 	//2. Check if the operation is valid by checking the page permission
 	//first check if present in the page table, if not, create page
@@ -241,38 +246,51 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	unsigned mask_for_second_10_bits = 0x003FF000;
 	unsigned next_10_bits = faultaddress & mask_for_second_10_bits;
 	next_10_bits = next_10_bits >> 12;
-
+	paddr_t paddr;
 	int tlb_index = -1;
-	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
-		if (as->pte[first_10_bits] != NULL) {
-			//look for second level
-			if (as->pte[first_10_bits][next_10_bits].ppn == 0) {
-				//if not null, you get your page table entry here.
-				paddr_t paddr = page_alloc();
-				if (paddr == 0) {
-					return EFAULT; //out of pages
-				}
-				as->pte[first_10_bits][next_10_bits].ppn = paddr;
-				as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
-				tlb_random(paddr, faultaddress);
-			}
-		} else {
-			//	panic("whooaaaa");
-			as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
-			paddr_t paddr = page_alloc();
+	if (as->pte[first_10_bits] != NULL) {
+		//look for second level
+		paddr_t paddr_temp = as->pte[first_10_bits][next_10_bits].ppn;
+		if (paddr_temp == 0) {//if not null, you get your page table entry here.
+			paddr = page_alloc();
 			if (paddr == 0) {
 				return EFAULT; //out of pages
 			}
 			as->pte[first_10_bits][next_10_bits].ppn = paddr;
 			as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
-			//todo set permissions also
-			tlb_random(paddr, faultaddress);
+			//random tlb write
+		} else {
+			//random tlb write
+			panic("pranav");
 		}
 	} else {
+		//	panic("whooaaaa");
+		as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
+		for(int i=0; i<1024;i++) {
+			as->pte[first_10_bits][i].ppn = 0;
+		}
+		paddr_t paddr = page_alloc();
+		if (paddr == 0) {
+			return EFAULT; //out of pages
+		}
+		as->pte[first_10_bits][next_10_bits].ppn = paddr;
+		as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
+		//todo set permissions also
+//		tlb_random(paddr, faultaddress);
+		//random write
+	}
+	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
+		//random write
+		int x = splhigh();
+		tlb_random(paddr, faultaddress);
+		splx(x);
+	} else {
+		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress, 0);
 		paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
 		tlb_index = tlb_probe(faultaddress, 0);
 		tlb_write(phy_page_no, faultaddress, tlb_index);
+		splx(x);
 	}
 
 	return 0;
