@@ -172,8 +172,13 @@ as_destroy(struct addrspace *as) {
 		for (int i = 0; i < 1024; i++) {
 			if (pte[i] != NULL) {
 				vm_tlbshootdown_all();
+				for (int j = 0; j < 1024; j++) {
+					if (pte[i][j].ppn != 0) {
+						page_free(pte[i][j].ppn & PAGE_FRAME);
+					}
+				}
 //				spinlock_cleanup(pte[i]->ptelock);
-				page_free(pte[i]->ppn & PAGE_FRAME);
+//				page_free(pte[i][j]->ppn & PAGE_FRAME);
 				kfree(pte[i]);	//kfree second level
 			}
 		}

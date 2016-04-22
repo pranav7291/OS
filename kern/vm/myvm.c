@@ -86,9 +86,10 @@ vaddr_t alloc_kpages(unsigned npages) {
 //check for a free space
 	for (unsigned i = first_free_addr; i < noOfPages; i++) {
 		int flag = 1;
-		if (coremap[i].state != DIRTY && coremap[i].state != FIXED) {
+		if (coremap[i].state != DIRTY && coremap[i].state != FIXED  && ((i+npages)<noOfPages)) {
 			//free space found. Check if next nPages are also free
 			for (unsigned j = 0; j < npages; j++) {
+
 				if (coremap[i + j].state != DIRTY && coremap[i + j].state != FIXED) { ///1 is free
 
 				} else {
@@ -102,11 +103,11 @@ vaddr_t alloc_kpages(unsigned npages) {
 			//npages of free space found.
 			coremap[i].state = FIXED;
 			coremap[i].size = npages;
-//			memset((void *)PADDR_TO_KVADDR(((i)*PAGE_SIZE)),0,PAGE_SIZE);
+			memset((void *)PADDR_TO_KVADDR(((i)*PAGE_SIZE)),0,PAGE_SIZE);
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[i + j].state = FIXED;
 				coremap[i + j].size = 1;
-//				memset((void *)PADDR_TO_KVADDR(((i + j)*PAGE_SIZE)),0,PAGE_SIZE);
+				memset((void *)PADDR_TO_KVADDR(((i + j)*PAGE_SIZE)),0,PAGE_SIZE);
 			}
 			usedBytes = usedBytes + PAGE_SIZE*npages;
 			spinlock_release(&coremap_spinlock);
@@ -122,7 +123,7 @@ void free_kpages(vaddr_t addr) {
 
 	//todo free the memory
 	spinlock_acquire(&coremap_spinlock);
-	paddr_t paddr = KVADDR_TO_PADDR(addr);
+	paddr_t paddr = KVADDR_TO_PADDR(addr) & PAGE_FRAME;
 	int i = paddr/PAGE_SIZE;
 
 	int temp = coremap[i].size;
@@ -145,7 +146,7 @@ paddr_t page_alloc() {
 		if (coremap[i].state == FREE){
 			coremap[i].state = DIRTY;
 			coremap[i].size = 1;
-			memset((void *) ((PADDR_TO_KVADDR(i * PAGE_SIZE)) /*& PAGE_FRAME*/),0,PAGE_SIZE);
+			memset((void *) ((PADDR_TO_KVADDR(i * PAGE_SIZE)) & PAGE_FRAME),0,PAGE_SIZE);
 
 			usedBytes = usedBytes + PAGE_SIZE;
 			spinlock_release(&coremap_spinlock);
