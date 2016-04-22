@@ -257,8 +257,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			if (paddr == 0) {
 				return EFAULT; //out of pages
 			}
+			spinlock_acquire(as->pte[first_10_bits]->ptelock);
 			as->pte[first_10_bits][next_10_bits].ppn = paddr;
 			as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
+			spinlock_release(as->pte[first_10_bits]->ptelock);
 			//random tlb write
 		} /*else {
 			//random tlb write
@@ -274,8 +276,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		if (paddr == 0) {
 			return EFAULT; //out of pages
 		}
+		spinlock_acquire(as->pte[first_10_bits]->ptelock);
 		as->pte[first_10_bits][next_10_bits].ppn = paddr;
 		as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
+		spinlock_release(as->pte[first_10_bits]->ptelock);
 		//todo set permissions also
 //		tlb_random(paddr, faultaddress);
 		//random write
