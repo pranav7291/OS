@@ -145,7 +145,7 @@ paddr_t page_alloc() {
 		if (coremap[i].state == FREE){
 			coremap[i].state = DIRTY;
 			coremap[i].size = 1;
-			memset((void *)PADDR_TO_KVADDR(((i)*PAGE_SIZE)),0,PAGE_SIZE);
+			memset((void *) ((PADDR_TO_KVADDR(i * PAGE_SIZE)) /*& PAGE_FRAME*/),0,PAGE_SIZE);
 
 			usedBytes = usedBytes + PAGE_SIZE;
 			spinlock_release(&coremap_spinlock);

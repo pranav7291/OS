@@ -479,7 +479,6 @@ int sys_sbrk(int amt, int *retval){
 	*retval = -1;
 	if(amt == 0){
 		*retval = heap_top;
-		curproc->p_addrspace->heap_top = heap_top;
 		return 0;
 	}
 

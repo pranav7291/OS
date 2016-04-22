@@ -167,6 +167,7 @@ as_destroy(struct addrspace *as) {
 		struct PTE **pte = as->pte;
 		for (int i = 0; i < 1024; i++) {
 			if (pte[i] != NULL) {
+//				page_free(pte[i]->ppn);
 				kfree(pte[i]);	//kfree second level
 			}
 		}
