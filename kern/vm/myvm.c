@@ -102,6 +102,7 @@ vaddr_t alloc_kpages(unsigned npages) {
 			//npages of free space found.
 			coremap[i].state = FIXED;
 			coremap[i].size = npages;
+			memset((void *)PADDR_TO_KVADDR(((i)*PAGE_SIZE)),0,PAGE_SIZE);
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[i + j].state = FIXED;
 				coremap[i + j].size = 1;

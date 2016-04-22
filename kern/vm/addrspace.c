@@ -123,26 +123,29 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 	struct PTE **newpte = new_as->pte;
 	for (int i = 0; i < 1024; i++) {
 		if (oldpte[i] != NULL) {
-			newpte[i] = kmalloc(sizeof(struct PTE ) * 1024); //second level kmalloc
+			newpte[i] = kmalloc(sizeof(struct PTE) * 1024); //second level kmalloc
 			if (newpte[i] == NULL) {
 				as_destroy(new_as);
 				return ENOMEM;
 			}
 			for (int j = 0; j < 1024; j++) {
-				if (newpte[i] == NULL) {
-					as_destroy(new_as);
-					return ENOMEM;
+				if (oldpte[i][j].ppn != 0) {
+					if (newpte[i] == NULL) {
+						as_destroy(new_as);
+						return ENOMEM;
+					}
+					newpte[i][j].vpn = oldpte[i][j].vpn;
+					newpte[i][j].ppn = page_alloc();
+					memmove((void *) PADDR_TO_KVADDR(newpte[i][j].ppn), (const void *) PADDR_TO_KVADDR(oldpte[i][j].ppn), PAGE_SIZE);
+					newpte[i][j].permission = oldpte[i][j].permission;
+					newpte[i][j].referenced = oldpte[i][j].referenced;
+					newpte[i][j].state = oldpte[i][j].state;
+					newpte[i][j].valid = oldpte[i][j].valid;
 				}
-				newpte[i][j].vpn = oldpte[i][j].vpn;
-				newpte[i][j].permission = oldpte[i][j].permission;
-				newpte[i][j].ppn = oldpte[i][j].ppn;
-				newpte[i][j].referenced = oldpte[i][j].referenced;
-				newpte[i][j].state = oldpte[i][j].state;
-				newpte[i][j].valid = oldpte[i][j].valid;
-//				}
 			}
 		}
 	}
+
 	*ret = new_as;
 	return 0;
 }
