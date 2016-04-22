@@ -36,6 +36,8 @@
 
 
 #include <vm.h>
+#include <mips/tlb.h>
+#include <spl.h>
 #include "opt-dumbvm.h"
 
 struct vnode;

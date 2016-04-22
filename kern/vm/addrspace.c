@@ -54,18 +54,24 @@ as_create(void)
 	 * Initialize as needed.
 	 */
 	//as->pages = NULL;
-	as->pte = (struct PTE **) kmalloc(sizeof(struct PTE **) * 1024);
+	as->pte =  kmalloc(sizeof(struct PTE *) * 1024);
 	if(as->pte==NULL) {
 		kfree(as);
 		return NULL;
 	}
-	for (int i = 0; i < 1024; i++){
-		as->pte[i] = NULL;
-	}
+//	for (int i = 0; i < 1024; i++){
+//		as->pte[i] = NULL;
+//	}
+//	if (as->pte[0] == NULL) {
+//		panic("Sammokka 1");
+//	}
+//	if (as->pte[1] == NULL) {
+//		panic("Sammokka 2");
+//	}
 	as->region = NULL;
-	as->stack_ptr = (vaddr_t)0x80000000;
-	as->heap_bottom = (vaddr_t)0;
-	as->heap_top = (vaddr_t)0;
+	as->stack_ptr = (vaddr_t) 0x80000000;
+	as->heap_bottom = (vaddr_t) 0;
+	as->heap_top = (vaddr_t) 0;
 
 	return as;
 }
@@ -117,25 +123,23 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 	struct PTE **newpte = new_as->pte;
 	for (int i = 0; i < 1024; i++) {
 		if (oldpte[i] != NULL) {
-			newpte[i] = (struct PTE *) kmalloc(sizeof(struct PTE *)); //second level kmalloc
+			newpte[i] = kmalloc(sizeof(struct PTE ) * 1024); //second level kmalloc
 			if (newpte[i] == NULL) {
 				as_destroy(new_as);
 				return ENOMEM;
 			}
 			for (int j = 0; j < 1024; j++) {
-				if (oldpte[i][j] != NULL) {
-					newpte[i][j] = kmalloc(sizeof(struct PTE)); //struct kmalloc
-					if (newpte[i][j] == NULL) {
-						as_destroy(new_as);
-						return ENOMEM;
-					}
-					newpte[i][j]->vpn = oldpte[i][j]->vpn;
-					newpte[i][j]->permission = oldpte[i][j]->permission;
-					newpte[i][j]->ppn = oldpte[i][j]->ppn;
-					newpte[i][j]->referenced = oldpte[i][j]->referenced;
-					newpte[i][j]->state = oldpte[i][j]->state;
-					newpte[i][j]->valid = oldpte[i][j]->valid;
+				if (newpte[i] == NULL) {
+					as_destroy(new_as);
+					return ENOMEM;
 				}
+				newpte[i][j].vpn = oldpte[i][j].vpn;
+				newpte[i][j].permission = oldpte[i][j].permission;
+				newpte[i][j].ppn = oldpte[i][j].ppn;
+				newpte[i][j].referenced = oldpte[i][j].referenced;
+				newpte[i][j].state = oldpte[i][j].state;
+				newpte[i][j].valid = oldpte[i][j].valid;
+//				}
 			}
 		}
 	}
@@ -144,8 +148,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 }
 
 void
-as_destroy(struct addrspace *as)
-{
+as_destroy(struct addrspace *as) {
 	/*
 	 * Clean up as needed.
 	 */
@@ -158,33 +161,16 @@ as_destroy(struct addrspace *as)
 			kfree(temp1);
 		}
 
-		//		struct PTE *pte = as->pages;
-		//		struct PTE *temp;
-		//		while (pte != NULL){
-		//			temp = pte;
-		//			pte = pte->next;
-		//			//write free page function
-		//			kfree(temp);
-		//		}
-
 		struct PTE **pte = as->pte;
 		for (int i = 0; i < 1024; i++) {
 			if (pte[i] != NULL) {
-				for (int j = 0; j < 1024; j++) {
-					if (pte[i][j] != NULL) {
-						kfree(pte[i][j]);	//kfree PTE
-						pte[i][j] = NULL;
-					}
-				}
 				kfree(pte[i]);	//kfree second level
-				pte[i] = NULL;
 			}
 		}
 		kfree(pte);	//kfree first level
 		pte = NULL;
 		kfree(as);
 	}
-
 }
 
 void
@@ -240,7 +226,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	size_t num_pages;
 	num_pages = memsize / PAGE_SIZE;
 
-	struct region * regionitr, *reg_end;
+	struct region *reg_end;
 
 	if(as->region == NULL){
 		as->region = (struct region *) kmalloc(sizeof(struct region));
