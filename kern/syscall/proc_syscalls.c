@@ -324,6 +324,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		if (result) {
 			kfree(name);
 			kfree(buf);
+			kfree(ptrbuf);
 			return EFAULT;
 		}
 
@@ -347,6 +348,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	if (result) {
 		kfree(name);
 		kfree(buf);
+		kfree(ptrbuf);
 		return result;
 	}
 
@@ -358,6 +360,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	if (curproc->p_addrspace == NULL) {
 		kfree(name);
 		kfree(buf);
+		kfree(ptrbuf);
 		vfs_close(v);
 		return ENOMEM;
 	}
@@ -372,6 +375,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		/* p_addrspace will go away when curproc is destroyed */
 		kfree(name);
 		kfree(buf);
+		kfree(ptrbuf);
 		vfs_close(v);
 		return result;
 	}
@@ -385,6 +389,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		/* p_addrspace will go away when curproc is destroyed */
 		kfree(name);
 		kfree(buf);
+		kfree(ptrbuf);
 		return result;
 	}
 
@@ -419,6 +424,7 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		if (result){
 			kfree(name);
 			kfree(buf);
+			kfree(ptrbuf);
 			return EFAULT;	//not sure whether to return this or result
 		}
 //		temp1 = (char *)stackptr;
@@ -438,10 +444,11 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		if (result){
 			kfree(name);
 			kfree(buf);
+			kfree(ptrbuf);
 			return EFAULT;	//again, result or this?
 		}
 	}
-
+	kfree(ptrbuf);
 	kfree(name);
 	kfree(buf);
 

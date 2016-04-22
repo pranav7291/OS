@@ -111,10 +111,10 @@ vaddr_t alloc_kpages(unsigned npages) {
 				coremap[i + j].size = 1;
 //				memset((void *)PADDR_TO_KVADDR(((i + j)*PAGE_SIZE)),0,PAGE_SIZE);
 			}
-			memset((void *) PADDR_TO_KVADDR(((i) * PAGE_SIZE)), 0,
-					PAGE_SIZE * npages);
+//			memset((void *)PADDR_TO_KVADDR(((i)*PAGE_SIZE)),0,PAGE_SIZE*npages);
+			bzero((void *)PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE * npages);
 
-			usedBytes = usedBytes + PAGE_SIZE * npages;
+			usedBytes = usedBytes + PAGE_SIZE*npages;
 			spinlock_release(&coremap_spinlock);
 			vaddr_t returner = PADDR_TO_KVADDR(PAGE_SIZE * i);
 			return returner;
@@ -151,7 +151,10 @@ paddr_t page_alloc() {
 		if (coremap[i].state == FREE){
 			coremap[i].state = DIRTY;
 			coremap[i].size = 1;
-			memset((void *) ((PADDR_TO_KVADDR(i * PAGE_SIZE)) & PAGE_FRAME),0,PAGE_SIZE);
+//			memset((void *) ((PADDR_TO_KVADDR(i * PAGE_SIZE)) & PAGE_FRAME),0,PAGE_SIZE);
+
+			bzero((void *)PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE );
+
 
 			usedBytes = usedBytes + PAGE_SIZE;
 			spinlock_release(&coremap_spinlock);

@@ -149,6 +149,9 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 //		spinlock_release(oldpte[i]->ptelock);
 		}
 	}
+	new_as->heap_bottom = old_addrspace->heap_bottom;
+	new_as->heap_top = old_addrspace->heap_top;
+	new_as->stack_ptr = old_addrspace->stack_ptr;
 
 	*ret = new_as;
 	return 0;
