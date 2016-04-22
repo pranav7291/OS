@@ -86,11 +86,13 @@ vaddr_t alloc_kpages(unsigned npages) {
 //check for a free space
 	for (unsigned i = first_free_addr; i < noOfPages; i++) {
 		int flag = 1;
-		if (coremap[i].state != DIRTY && coremap[i].state != FIXED  && ((i+npages)<noOfPages)) {
+		if (coremap[i].state != DIRTY && coremap[i].state != FIXED
+				&& ((i + npages) < noOfPages)) {
 			//free space found. Check if next nPages are also free
 			for (unsigned j = 0; j < npages; j++) {
 
-				if (coremap[i + j].state != DIRTY && coremap[i + j].state != FIXED) { ///1 is free
+				if (coremap[i + j].state != DIRTY
+						&& coremap[i + j].state != FIXED) { ///1 is free
 
 				} else {
 					flag = 0;
@@ -103,15 +105,18 @@ vaddr_t alloc_kpages(unsigned npages) {
 			//npages of free space found.
 			coremap[i].state = FIXED;
 			coremap[i].size = npages;
-			memset((void *)PADDR_TO_KVADDR(((i)*PAGE_SIZE)),0,PAGE_SIZE);
+//			memset((void *)PADDR_TO_KVADDR(((i)*PAGE_SIZE)),0,PAGE_SIZE);
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[i + j].state = FIXED;
 				coremap[i + j].size = 1;
-				memset((void *)PADDR_TO_KVADDR(((i + j)*PAGE_SIZE)),0,PAGE_SIZE);
+//				memset((void *)PADDR_TO_KVADDR(((i + j)*PAGE_SIZE)),0,PAGE_SIZE);
 			}
-			usedBytes = usedBytes + PAGE_SIZE*npages;
+			memset((void *) PADDR_TO_KVADDR(((i) * PAGE_SIZE)), 0,
+					PAGE_SIZE * npages);
+
+			usedBytes = usedBytes + PAGE_SIZE * npages;
 			spinlock_release(&coremap_spinlock);
-			vaddr_t returner = PADDR_TO_KVADDR(PAGE_SIZE*i);
+			vaddr_t returner = PADDR_TO_KVADDR(PAGE_SIZE * i);
 			return returner;
 		}
 	}
