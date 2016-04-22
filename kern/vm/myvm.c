@@ -250,8 +250,11 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		if (as->pte[first_10_bits][next_10_bits].vpn == faultaddress) {
 			//if not null, you get your page table entry here.
 			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
-			vaddr_t virt_page_no = as->pte[first_10_bits][next_10_bits].vpn;
-
+			if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
+				tlb_write(phy_page_no, faultaddress, tlb_index);
+			} else {
+				tlb_random(phy_page_no, faultaddress);
+			}
 		} else {
 			//this is a page fault. Service it.
 			//no page table entry here, allocate memory for page table entry
@@ -272,7 +275,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			}
 		}
 	} else {
-
 		//	panic("whooaaaa");
 		as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
 		//this is a page fault. Service it.
