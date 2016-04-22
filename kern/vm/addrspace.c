@@ -123,10 +123,10 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 	struct PTE **newpte = new_as->pte;
 	for (int i = 0; i < 1024; i++) {
 		if (oldpte[i] != NULL) {
-			spinlock_acquire(oldpte[i]->ptelock);
+//			spinlock_acquire(oldpte[i]->ptelock);
 			newpte[i] = kmalloc(sizeof(struct PTE) * 1024); //second level kmalloc
 			if (newpte[i] == NULL) {
-				spinlock_release(oldpte[i]->ptelock);
+//				spinlock_release(oldpte[i]->ptelock);
 				as_destroy(new_as);
 				return ENOMEM;
 			}
@@ -136,7 +136,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 						as_destroy(new_as);
 						return ENOMEM;
 					}
-					spinlock_init(newpte[i][j].ptelock);
+//					spinlock_init(newpte[i][j].ptelock);
 					newpte[i][j].vpn = oldpte[i][j].vpn;
 					newpte[i][j].ppn = page_alloc();
 					memmove((void *) PADDR_TO_KVADDR(newpte[i][j].ppn), (const void *) PADDR_TO_KVADDR(oldpte[i][j].ppn), PAGE_SIZE);
@@ -146,7 +146,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 					newpte[i][j].valid = oldpte[i][j].valid;
 				}
 			}
-		spinlock_release(oldpte[i]->ptelock);
+//		spinlock_release(oldpte[i]->ptelock);
 		}
 	}
 
@@ -172,7 +172,7 @@ as_destroy(struct addrspace *as) {
 		for (int i = 0; i < 1024; i++) {
 			if (pte[i] != NULL) {
 				vm_tlbshootdown_all();
-				spinlock_cleanup(pte[i]->ptelock);
+//				spinlock_cleanup(pte[i]->ptelock);
 				page_free(pte[i]->ppn & PAGE_FRAME);
 				kfree(pte[i]);	//kfree second level
 			}
