@@ -105,6 +105,7 @@ vaddr_t alloc_kpages(unsigned npages) {
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[i + j].state = FIXED;
 				coremap[i + j].size = 1;
+				memset((void *)((i + j)*PAGE_SIZE),0,PAGE_SIZE);
 			}
 			usedBytes = usedBytes + PAGE_SIZE*npages;
 			spinlock_release(&coremap_spinlock);
@@ -143,6 +144,7 @@ paddr_t page_alloc() {
 		if (coremap[i].state == FREE){
 			coremap[i].state = DIRTY;
 			coremap[i].size = 1;
+
 			usedBytes = usedBytes + PAGE_SIZE;
 			spinlock_release(&coremap_spinlock);
 			paddr_t returner = PAGE_SIZE*i;
@@ -241,59 +243,36 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	next_10_bits = next_10_bits >> 12;
 
 	int tlb_index = -1;
-	if (faulttype == VM_FAULT_READONLY) {
-		tlb_index = tlb_probe(faultaddress, 0);
-	}
-	if(as->pte[first_10_bits]!=NULL) {
-
-		//look for second level
-		if (as->pte[first_10_bits][next_10_bits].vpn == faultaddress) {
-			//if not null, you get your page table entry here.
-			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
-			if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
-				tlb_write(phy_page_no, faultaddress, tlb_index);
-			} else {
-				tlb_random(phy_page_no, faultaddress);
+	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
+		if (as->pte[first_10_bits] != NULL) {
+			//look for second level
+			if (as->pte[first_10_bits][next_10_bits].ppn == 0) {
+				//if not null, you get your page table entry here.
+				paddr_t paddr = page_alloc();
+				if (paddr == 0) {
+					return EFAULT; //out of pages
+				}
+				as->pte[first_10_bits][next_10_bits].ppn = paddr;
+				as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
+				tlb_random(paddr, faultaddress);
 			}
 		} else {
-			//this is a page fault. Service it.
-			//no page table entry here, allocate memory for page table entry
+			//	panic("whooaaaa");
+			as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
 			paddr_t paddr = page_alloc();
 			if (paddr == 0) {
 				return EFAULT; //out of pages
 			}
-			struct PTE *page_fault_pte;
-			page_fault_pte = kmalloc(sizeof(struct PTE));
-			page_fault_pte->vpn = faultaddress;
-			page_fault_pte->ppn = paddr;
-			as->pte[first_10_bits][next_10_bits] = *page_fault_pte;
+			as->pte[first_10_bits][next_10_bits].ppn = paddr;
+			as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
 			//todo set permissions also
-			if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
-				tlb_write(paddr, faultaddress, tlb_index);
-			} else {
-				tlb_random(paddr, faultaddress);
-			}
-		}
-	} else {
-		//	panic("whooaaaa");
-		as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
-		//this is a page fault. Service it.
-		//no page table entry here, allocate memory for page table entry
-		paddr_t paddr = page_alloc();
-		if (paddr == 0) {
-			return EFAULT; //out of pages
-		}
-		struct PTE *page_fault_pte;
-		page_fault_pte = kmalloc(sizeof(struct PTE));
-		page_fault_pte->vpn = faultaddress;
-		page_fault_pte->ppn = paddr;
-		as->pte[first_10_bits][next_10_bits] = *page_fault_pte;
-		//todo set permissions also
-		if (faulttype == VM_FAULT_READONLY && tlb_index != -1) {
-			tlb_write(paddr, faultaddress, tlb_index);
-		} else {
 			tlb_random(paddr, faultaddress);
 		}
+	} else {
+		tlb_index = tlb_probe(faultaddress, 0);
+		paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
+		tlb_index = tlb_probe(faultaddress, 0);
+		tlb_write(phy_page_no, faultaddress, tlb_index);
 	}
 
 	return 0;
