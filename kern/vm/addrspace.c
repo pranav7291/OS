@@ -69,9 +69,9 @@ as_create(void)
 //		panic("Sammokka 2");
 //	}
 	as->region = NULL;
-	as->stack_ptr = (vaddr_t) 0x80000000;
+	as->stack_ptr = (vaddr_t) (0x80000000 - 0x400000);
 	as->heap_bottom = (vaddr_t) 0;
-	as->heap_top = (vaddr_t) 0;
+	as->heap_top = (vaddr_t) 0;//as->stack_ptr;
 
 	return as;
 }
@@ -269,7 +269,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	reg_end->num_pages = num_pages;
 	reg_end->permission = 7 & (readable | writeable | executable);
 	reg_end->base_vaddr = vaddr;
-	as->heap_bottom = (vaddr + (PAGE_SIZE * num_pages))&PAGE_FRAME;
+	as->heap_bottom = (vaddr + (PAGE_SIZE * num_pages));//&PAGE_FRAME;
 	as->heap_top = as->heap_bottom;
 
 	//todo do I create heap and stack here???

@@ -216,35 +216,34 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 	//1. Check if the fault address is valid -
 
-//	vaddr_t vbase, vtop;
-//	bool fheap = false;
-//	bool fstack = false;
-//	bool fregion = false;
+	vaddr_t vbase, vtop;
+	bool fheap = false;
+	bool fstack = false;
+	bool fregion = false;
 //	struct region *fault_reg = NULL;
 	struct addrspace *as = curproc->p_addrspace;
-//	struct region *reg = as->region;
-//	if (faultaddress >= as->heap_bottom && faultaddress < as->heap_top) {
-//		//fault address is in heap
-//		fheap = true;
-//	} else if (faultaddress >= as->stack_ptr
-//			&& faultaddress <= (vaddr_t) 0x80000000) {
-//		//fault address is in heap
-//		fstack = true;
-//	} else { //search regions
-//		while (reg != NULL) {
-//			vbase = reg->base_vaddr;
-//			vtop = vbase + (PAGE_SIZE * reg->num_pages);
-//			if (faultaddress >= vbase && faultaddress < vtop) {
-////				fault_reg = reg;
-//				fregion  = true;
-//				break;
-//			}
-//			reg = reg->next;
-//		}
-//	}
-//	if (!(fregion | fheap | fstack)) {
-//		return EFAULT;
-//	}
+	struct region *reg = as->region;
+	if (faultaddress >= as->heap_bottom && faultaddress < as->heap_top) {
+		//fault address is in heap
+		fheap = true;
+	} else if ((faultaddress >= (vaddr_t) as->stack_ptr) && (faultaddress < (vaddr_t) 0x80000000)) {
+		//fault address is in heap
+		fstack = true;
+	} else { //search regions
+		while (reg != NULL) {
+			vbase = reg->base_vaddr;
+			vtop = vbase + (PAGE_SIZE * reg->num_pages);
+			if (faultaddress >= vbase && faultaddress < vtop) {
+//				fault_reg = reg;
+				fregion  = true;
+				break;
+			}
+			reg = reg->next;
+		}
+	}
+	if (!(fregion || fheap || fstack)) {
+		return EFAULT;
+	}
 
 	//2. Check if the operation is valid by checking the page permission
 	//first check if present in the page table, if not, create page

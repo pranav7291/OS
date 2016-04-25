@@ -113,7 +113,12 @@ kill_curthread(vaddr_t epc, unsigned code, vaddr_t vaddr)
 
 	struct proc *proc1 = pt_proc[curproc->pid];
 	proc1->isexited= 1;
-	proc1->exitcode=_MKWAIT_SIG(sig);
+	if (sig == 0){
+		proc1->exitcode=_MKWAIT_EXIT(sig);
+	}
+	else {
+		proc1->exitcode=_MKWAIT_SIG(sig);
+	}
 	V(proc1->proc_sem);
 	thread_exit();
 

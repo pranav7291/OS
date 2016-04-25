@@ -467,8 +467,13 @@ int sys_execv(const char *program, char **uargs, int *retval){
 int sys_exit(int code) {
 	//kprintf("exiting pid %d", curproc->pid);
 	curproc->isexited = true;
-	curproc->exitcode = _MKWAIT_EXIT(code);
-	for (int i = 3; i < OPEN_MAX; i++) {
+	if (code == 0){
+		curproc->exitcode=_MKWAIT_EXIT(code);
+	}
+	else {
+		curproc->exitcode=_MKWAIT_SIG(code);
+	}
+	for (int i = 0; i < OPEN_MAX; i++) {
 		if (curproc->proc_filedesc[i] != NULL) {
 			int retval;
 			sys_close(i, &retval);
