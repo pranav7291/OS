@@ -45,6 +45,10 @@
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
 
+#define MYVM_STACKPAGES 12
+
+
+
 #define FREE 1
 #define DIRTY 2
 #define CLEAN 3
