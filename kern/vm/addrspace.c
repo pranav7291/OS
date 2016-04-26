@@ -308,8 +308,8 @@ int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
 	/* Initial user-level stack pointer */
-	*stackptr = USERSTACK;
-	as->stack_ptr = USERSTACK;
+	*stackptr = USERSTACK;// - (MYVM_STACKPAGES * PAGE_SIZE);
+	as->stack_ptr = USERSTACK;// - (MYVM_STACKPAGES * PAGE_SIZE);
 	return 0;
 }
 

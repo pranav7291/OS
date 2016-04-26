@@ -506,8 +506,7 @@ int sys_sbrk(int amt, int *retval){
 
 		if (amt >= PAGE_SIZE){
 			vm_tlbshootdown_all();
-			for(unsigned i = ((int)(heap_top & PAGE_FRAME) + amt); i <= (heap_top & PAGE_FRAME); i = i + PAGE_SIZE){
-				page_free(i);
+			for(unsigned i = ((int)(heap_top & PAGE_FRAME) - amt); i <= (heap_top & PAGE_FRAME); i = i + PAGE_SIZE){
 				unsigned mask_for_first_10_bits = 0xFFC00000;
 				unsigned first_10_bits = i & mask_for_first_10_bits;
 				first_10_bits = first_10_bits >> 22;
@@ -516,7 +515,10 @@ int sys_sbrk(int amt, int *retval){
 				unsigned next_10_bits = i & mask_for_second_10_bits;
 				next_10_bits = next_10_bits >> 12;
 
+				page_free(as->pte[first_10_bits][next_10_bits].ppn);
+
 				as->pte[first_10_bits][next_10_bits].ppn = 0;
+				as->pte[first_10_bits][next_10_bits].vpn = 0;
 			}
 		}
 
@@ -530,15 +532,6 @@ int sys_sbrk(int amt, int *retval){
 
 		if((long)amt >= (long)PAGE_SIZE){
 			if ((long)amt > (long)(as->stack_ptr - as->heap_top)){
-				return ENOMEM;
-			}
-			int amt1 = amt;
-			amt1 -= PAGE_SIZE - ((heap_top - heap_bottom)%PAGE_SIZE);
-			unsigned num_pages = amt1/PAGE_SIZE;
-			if(amt1 % PAGE_SIZE){
-				num_pages++;
-			}
-			if(num_pages > noOfPages){
 				return ENOMEM;
 			}
 		}

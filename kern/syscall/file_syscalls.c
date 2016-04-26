@@ -109,6 +109,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 //					//printf("vopstat_returner did not return 0, some error\n");
 				}
 				filedesc_ptr->offset = stat_obj->st_size;
+				kfree(stat_obj);
 			} else {
 				filedesc_ptr->offset = 0;
 			}
