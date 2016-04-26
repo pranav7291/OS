@@ -506,7 +506,7 @@ int sys_sbrk(int amt, int *retval){
 
 		if (amt >= PAGE_SIZE){
 			vm_tlbshootdown_all();
-			for(unsigned i = ((int)(heap_top & PAGE_FRAME) - amt); i <= (heap_top & PAGE_FRAME); i = i + PAGE_SIZE){
+			for(unsigned i = ((int)(heap_top & PAGE_FRAME) - amt); i < (heap_top & PAGE_FRAME); i = i + PAGE_SIZE){
 				unsigned mask_for_first_10_bits = 0xFFC00000;
 				unsigned first_10_bits = i & mask_for_first_10_bits;
 				first_10_bits = first_10_bits >> 22;
