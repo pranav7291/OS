@@ -69,7 +69,7 @@ as_create(void)
 //		panic("Sammokka 2");
 //	}
 	as->region = NULL;
-	as->stack_ptr = (vaddr_t) (0x80000000 - 0x400000);
+	as->stack_ptr = USERSTACK - (MYVM_STACKPAGES * PAGE_SIZE);
 	as->heap_bottom = (vaddr_t) 0;
 	as->heap_top = (vaddr_t) 0;//as->stack_ptr;
 

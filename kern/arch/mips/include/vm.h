@@ -84,6 +84,9 @@
  */
 #define USERSTACK     USERSPACETOP
 
+#define MYVM_STACKPAGES 18
+
+
 /*
  * Interface to the low-level module that looks after the amount of
  * physical memory we have.

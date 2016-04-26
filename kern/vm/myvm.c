@@ -39,7 +39,6 @@
 #include <vm.h>
 #include <spl.h>
 
-
 struct coremap_entry* coremap;
 
 void vm_bootstrap(void) {
@@ -215,7 +214,7 @@ void vm_tlbshootdown(const struct tlbshootdown *ts) {
 int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 	//1. Check if the fault address is valid -
-
+	vaddr_t stack_top, stack_bottom;
 	vaddr_t vbase, vtop;
 	bool fheap = false;
 	bool fstack = false;
@@ -223,10 +222,12 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 //	struct region *fault_reg = NULL;
 	struct addrspace *as = curproc->p_addrspace;
 	struct region *reg = as->region;
+	stack_top = USERSTACK;
+	stack_bottom = USERSTACK - MYVM_STACKPAGES * PAGE_SIZE;
 	if (faultaddress >= as->heap_bottom && faultaddress < as->heap_top) {
 		//fault address is in heap
 		fheap = true;
-	} else if ((faultaddress > 0x40000000) && (faultaddress <= (vaddr_t) 0x80000000)) {
+	} else if ((faultaddress >= stack_bottom) && (faultaddress < stack_top)) {
 		//fault address is in heap
 		fstack = true;
 	} else { //search regions
