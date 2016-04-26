@@ -226,7 +226,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	if (faultaddress >= as->heap_bottom && faultaddress < as->heap_top) {
 		//fault address is in heap
 		fheap = true;
-	} else if ((faultaddress >= (vaddr_t) as->stack_ptr) && (faultaddress < (vaddr_t) 0x80000000)) {
+	} else if ((faultaddress > 0x40000000) && (faultaddress <= (vaddr_t) 0x80000000)) {
 		//fault address is in heap
 		fstack = true;
 	} else { //search regions
