@@ -78,7 +78,7 @@ struct proc {
 
 	//adding for files table
 	struct filedesc *proc_filedesc[OPEN_MAX];
-	int count_filedesc;
+//	int count_filedesc;
 
 	//adding for proc table
 	struct semaphore *proc_sem;

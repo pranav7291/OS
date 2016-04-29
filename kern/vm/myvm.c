@@ -75,6 +75,7 @@ void vm_bootstrap(void) {
 		//what will address field have? todo
 	}
 	spinlock_init(&coremap_spinlock);
+	spinlock_init(&tlb_spinlock);
 }
 
 /* Allocate/free some kernel-space virtual pages */
@@ -129,11 +130,13 @@ void free_kpages(vaddr_t addr) {
 	spinlock_acquire(&coremap_spinlock);
 	paddr_t paddr = KVADDR_TO_PADDR(addr) & PAGE_FRAME;
 	int i = paddr/PAGE_SIZE;
-
+	int index = 0;
 	int temp = coremap[i].size;
 	for (int j = i; j < i + temp; j++) {
+		vm_tlbshootdownvaddr(addr + (index * PAGE_SIZE));
 		coremap[j].state = FREE;
 		coremap[j].size = 1;
+		index++;
 	}
 
 	usedBytes = usedBytes - temp * PAGE_SIZE;
@@ -170,6 +173,7 @@ void page_free(paddr_t paddr) {
 
 	//todo free the memory
 	spinlock_acquire(&coremap_spinlock);
+	vm_tlbshootdownvaddr(PADDR_TO_KVADDR(paddr));
 	int i = paddr/PAGE_SIZE;
 
 	coremap[i].state = FREE;
@@ -187,28 +191,49 @@ int coremap_used_bytes() {
 
 void vm_tlbshootdown_all(void) {
 	//panic("myvm tried to do tlb shootdown?!\n");
-	spinlock_acquire(&coremap_spinlock);
+	spinlock_acquire(&tlb_spinlock);
 	int x = splhigh();
 	for (int i = 0; i < NUM_TLB; i++){
 		tlb_write(TLBHI_INVALID(i),TLBLO_INVALID(),i);
 	}
 	splx(x);
-	spinlock_release(&coremap_spinlock);
+	spinlock_release(&tlb_spinlock);
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {
 	uint32_t lo, hi;
 	int tlb_ind;
-	spinlock_acquire(&coremap_spinlock);
+	spinlock_acquire(&tlb_spinlock);
 	tlb_ind = ts->tlb_indicator;
 	int x = splhigh();
+
 	tlb_read(&hi, &lo, tlb_ind);
-	if(lo & TLBLO_VALID){
-		//todo remove entry from coremap maybe
+	int i = tlb_probe(hi,0);
+	if(i >= 0){
+		tlb_write(TLBHI_INVALID(tlb_ind),TLBLO_INVALID(),i);
 	}
-	tlb_write(TLBHI_INVALID(tlb_ind),TLBLO_INVALID(),tlb_ind);
+//	if(lo & TLBLO_VALID){
+//		//todo remove entry from coremap maybe
+//	}
+//	tlb_write(TLBHI_INVALID(tlb_ind),TLBLO_INVALID(),tlb_ind);
 	splx(x);
-	spinlock_release(&coremap_spinlock);
+	spinlock_release(&tlb_spinlock);
+}
+
+void vm_tlbshootdownvaddr(vaddr_t vaddr) {
+	uint32_t lo, hi;
+//	KASSERT(vaddr < MIPS_KSEG0);
+	spinlock_acquire(&tlb_spinlock);
+	int x = splhigh();
+	int i=tlb_probe(vaddr & PAGE_FRAME, 0);
+	if(i >= 0)
+	{
+		tlb_read(&hi, &lo, i);
+//		KASSERT(lo & TLBLO_VALID);
+		tlb_write(TLBHI_INVALID(i),TLBLO_INVALID(),i);
+	}
+	splx(x);
+	spinlock_release(&tlb_spinlock);
 }
 
 int vm_fault(int faulttype, vaddr_t faultaddress) {
@@ -219,6 +244,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	bool fheap = false;
 	bool fstack = false;
 	bool fregion = false;
+//	KASSERT(faultaddress!=0x4009C0);
 //	struct region *fault_reg = NULL;
 	struct addrspace *as = curproc->p_addrspace;
 	struct region *reg = as->region;
@@ -228,7 +254,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		//fault address is in heap
 		fheap = true;
 	} else if ((faultaddress >= stack_bottom) && (faultaddress < stack_top)) {
-		//fault address is in heap
+		//fault address is in stack
 		fstack = true;
 	} else { //search regions
 		while (reg != NULL) {
@@ -295,16 +321,25 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	}
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
 		//random write
-		int x = splhigh();
-		paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
-		tlb_random((faultaddress & PAGE_FRAME ), ((phy_page_no & PAGE_FRAME)| TLBLO_VALID));
-		splx(x);
-	} else if (faulttype == VM_FAULT_READONLY){
+		spinlock_acquire(&tlb_spinlock);
 		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
-		paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
-		tlb_write((faultaddress & PAGE_FRAME), ((phy_page_no & PAGE_FRAME) | TLBLO_DIRTY | TLBLO_VALID), tlb_index);
+		if(tlb_index < 0){
+			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
+			tlb_random((faultaddress & PAGE_FRAME ), ((phy_page_no & PAGE_FRAME)| TLBLO_VALID));
+		}
 		splx(x);
+		spinlock_release(&tlb_spinlock);
+	} else if (faulttype == VM_FAULT_READONLY){
+		spinlock_acquire(&tlb_spinlock);
+		int x = splhigh();
+		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
+		if(tlb_index >= 0){
+			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
+			tlb_write((faultaddress & PAGE_FRAME), ((phy_page_no & PAGE_FRAME) | TLBLO_DIRTY | TLBLO_VALID), tlb_index);
+		}
+		splx(x);
+		spinlock_release(&tlb_spinlock);
 	}
 
 	return 0;

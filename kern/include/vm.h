@@ -55,11 +55,17 @@
 #define FIXED 4
 
 struct spinlock coremap_spinlock;
+struct spinlock tlb_spinlock;
 paddr_t first;
 paddr_t last;
 unsigned first_free_addr;
 unsigned noOfPages;
 unsigned usedBytes;
+
+//char *helper1[1000];
+//char *helper2[2000];
+//int h1index;
+//int h2index;
 
 int coremap_size;
 int no_of_coremap_entries;
@@ -94,5 +100,6 @@ unsigned int coremap_used_bytes(void);
 /* TLB shootdown handling called from interprocessor_interrupt */
 void vm_tlbshootdown_all(void);
 void vm_tlbshootdown(const struct tlbshootdown *);
+void vm_tlbshootdownvaddr(vaddr_t vaddr);
 
 #endif /* _VM_H_ */

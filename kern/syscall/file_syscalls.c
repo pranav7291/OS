@@ -116,10 +116,6 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			//make the thread->filedesc point to the filedesc
 			lock_acquire(filedesc_ptr->fd_lock);
 			curproc->proc_filedesc[i]= filedesc_ptr;
-			//pranavja add
-			if(i > curproc->count_filedesc)
-			curproc->count_filedesc++;
-			//pranavja end
 			lock_release(curproc->proc_filedesc[i]->fd_lock);
 
 			*retval = i;	//store the value returned by vfs_open to retval
@@ -166,35 +162,6 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 	lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 
-//	//printf("Inside write with fd %d\n", fd);
-
-/*	Use VOP_WRITE with struct iovec and struct uio.
-	Init uio for write for user space buffers
-	uio->uio_segflg = UIO_USERSPACE
-	uio->uio_resid has bytes left after IO operation = len - uio->uio_resid
-*/
-//check if fd exists, otherwise return error
-
-
-	//dummy comment for git test
-
-//	if (fd > OPEN_MAX || fd < 0 ||
-//				curproc->proc_filedesc[fd]  == NULL || curproc->proc_filedesc[fd]->isempty == 1 ||
-//				((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) ) {
-//
-//		if(curproc->proc_filedesc[fd]  == NULL ) {
-//			//printf("filedesc[fd] is null...\n");
-//		} else if(curproc->proc_filedesc[fd]->isempty == 1) {
-//			//printf("is empty=1\n");
-//		}else if((curproc->proc_filedesc[fd]->flags & O_ACCMODE) == O_RDONLY) {
-//			//printf("is read only...\n");
-//			//printf("the flags value is set to %d",curproc->proc_filedesc[fd]->flags );
-//		}
-//		lock_release(curproc->proc_filedesc[fd]->fd_lock);
-//		//printf("Some error, returning EBADF for fd=%d..\n",fd);
-//		*retval = -1;
-//		return EBADF;
-//	}
 
 //	//printf("File descriptor %d exists in the file table. Yay.", fd );
 
@@ -212,18 +179,6 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	int err;
 	off_t pos= curproc->proc_filedesc[fd]->offset;
 	int result;
-
-
-	// todo write code for the various flags
-
-
-
-
-//	//printf("the write buffer before copyin %s", buf);
-
-//	size_t got;
-//	result = copyinstr((const_userptr_t)buf, write_buf,size, &got);
-
 	result = copyin((const_userptr_t)buf,write_buf,size);
 
 //	//printf("the write buffer %s", write_buf);
@@ -251,9 +206,6 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	uio_obj.uio_rw = UIO_WRITE;
 	uio_obj.uio_space = curproc->p_addrspace;
 
-
-
-
 	err = VOP_WRITE(curproc->proc_filedesc[fd]->fd_vnode, &uio_obj);
 
 	if (err) {
@@ -277,30 +229,23 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 int sys_close(int fd, ssize_t *retval) {
 //	//printf("In close");
 
-	//lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
-//	if(curproc->proc_filedesc[fd]==NULL) {
-//		//printf("fd does not exist.");
-//		return EBADF;
-//	}
-	//pranavja add
-	if (fd < 0 || fd > OPEN_MAX ) {
+	if (fd < 0 || fd > OPEN_MAX) {
 		*retval = -1;
 		return EBADF;
-	} else if (curproc->proc_filedesc[fd]==NULL){
+	} else if (curproc->proc_filedesc[fd] == NULL) {
 		return EBADF;
-	}	else {
-		curproc->proc_filedesc[fd]->fd_refcount--;
-		////kprintf("\n close() the ref count is %d", curproc->proc_filedesc[fd]->fd_refcount);
-		if (curproc->proc_filedesc[fd]->fd_refcount == 0) {
-			//lock_release(curproc->proc_filedesc[fd]->fd_lock);
+	} else {
+		int refcount;
+		lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+		refcount = --curproc->proc_filedesc[fd]->fd_refcount;
+		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+
+		if (refcount == 0) {
 			vfs_close(curproc->proc_filedesc[fd]->fd_vnode);
 			lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
 			kfree(curproc->proc_filedesc[fd]->name);
 			kfree(curproc->proc_filedesc[fd]);
 			curproc->proc_filedesc[fd] = NULL;
-			//add pranavja
-			curproc->count_filedesc--;
-			//end pranavja
 		}
 		*retval = 0;
 		return 0;
@@ -424,13 +369,6 @@ off_t sys_lseek(int filehandle, off_t pos, int code, ssize_t *retval, ssize_t *r
 		*retval=-1;
 		return EBADF;
 	}
-	//pranavja add
-//	if(filehandle > curproc->count_filedesc + 2){
-//		*retval=-1;
-//		return EBADF;
-//	}
-	//pranavja end
-
 	int result;
 	off_t offset;
 	off_t filesize;

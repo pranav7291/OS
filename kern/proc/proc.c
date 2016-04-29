@@ -178,6 +178,10 @@ proc_destroy(struct proc *proc)
 	spinlock_cleanup(&proc->p_lock);
 	kfree(proc->p_name);
 	for (int i = 0; i < OPEN_MAX; i++) {
+//		if((i >= 0) && (i <= 2) && (proc->proc_filedesc[i] != NULL)){
+//			int retval;
+//			sys_close(i, &retval);
+//		}
 		proc->proc_filedesc[i] = NULL;
 	}
 	kfree(proc);

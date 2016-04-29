@@ -163,6 +163,8 @@ as_destroy(struct addrspace *as) {
 	 * Clean up as needed.
 	 */
 	if (as != NULL) {
+		vm_tlbshootdown_all();
+
 		struct region *reg = as->region;
 		struct region *temp1;
 		while (reg != NULL) {
@@ -174,10 +176,10 @@ as_destroy(struct addrspace *as) {
 		struct PTE **pte = as->pte;
 		for (int i = 0; i < 1024; i++) {
 			if (pte[i] != NULL) {
-				vm_tlbshootdown_all();
+//				vm_tlbshootdown_all();
 				for (int j = 0; j < 1024; j++) {
 					if (pte[i][j].ppn != 0) {
-						page_free(pte[i][j].ppn & PAGE_FRAME);
+						page_free(pte[i][j].ppn);// & PAGE_FRAME);
 					}
 				}
 //				spinlock_cleanup(pte[i]->ptelock);
@@ -186,7 +188,6 @@ as_destroy(struct addrspace *as) {
 			}
 		}
 		kfree(pte);	//kfree first level
-		pte = NULL;
 		kfree(as);
 	}
 }

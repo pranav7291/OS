@@ -117,7 +117,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	newproc->p_cwd=curproc->p_cwd;
 	VOP_INCREF(curproc->p_cwd);
 
-	*retval = newproc->pid;
+//	*retval = newproc->pid;
 
 	if(thread_fork("Child Thread", newproc,
 					entrypoint,  (void* ) tf_child,
@@ -128,7 +128,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	//kprintf("forked to pid->%d", newproc->pid);
 
 	//sammokka end
-
+	*retval = newproc->pid;
 	return 0;
 }
 
@@ -175,34 +175,15 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 		return ECHILD;
 	}}
 
-//	if (options != 1000){
-//
-//		pid_t my = -1, his = -1;
-//		int flag = 0;
-//		for(int i = 2; i <= proc_count; i++){
-//			if (pt_proc[i]->pid == curproc->pid)
-//				my = pt_proc[i]->parent_pid;
-//			else if (pt_proc[i]->pid == pid){
-//				flag = 1;
-//				his = pt_proc[i]->parent_pid;
-//			}
-//		}
-//		if (flag && (my == his)){
-//			return EFAULT;
-//		}
-////		if (!flag){
-////			return ESRCH;
-////		}
-//	}
 
 	if (pt_proc[pid]->isexited == false) {
 		P(pt_proc[pid]->proc_sem);
 	}
-
 	*retval = pid;
+
 	if (status != NULL) {
-		int exitcd = pt_proc[pid]->exitcode;
-		int result = copyout((const void *) &exitcd, (userptr_t) status,
+//		int exitcd = pt_proc[pid]->exitcode;
+		int result = copyout((const void *) &(pt_proc[pid]->exitcode), (userptr_t) status,
 				sizeof(int));
 
 		if (result) {
@@ -323,8 +304,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 //			return E2BIG;
 		if (result) {
 			kfree(name);
-			kfree(buf);
 			kfree(ptrbuf);
+			kfree(buf);
 			return EFAULT;
 		}
 
@@ -347,8 +328,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	result = vfs_open(name, O_RDONLY, 0, &v);
 	if (result) {
 		kfree(name);
-		kfree(buf);
 		kfree(ptrbuf);
+		kfree(buf);
 		return result;
 	}
 
@@ -359,8 +340,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	curproc->p_addrspace = as_create();
 	if (curproc->p_addrspace == NULL) {
 		kfree(name);
-		kfree(buf);
 		kfree(ptrbuf);
+		kfree(buf);
 		vfs_close(v);
 		return ENOMEM;
 	}
@@ -374,8 +355,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
 		kfree(name);
-		kfree(buf);
 		kfree(ptrbuf);
+		kfree(buf);
 		vfs_close(v);
 		return result;
 	}
@@ -388,8 +369,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
 		kfree(name);
-		kfree(buf);
 		kfree(ptrbuf);
+		kfree(buf);
 		return result;
 	}
 
@@ -423,8 +404,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		result = copyout((const void *)(temp1), (userptr_t)stackptr, len);
 		if (result){
 			kfree(name);
-			kfree(buf);
 			kfree(ptrbuf);
+			kfree(buf);
 			return EFAULT;	//not sure whether to return this or result
 		}
 //		temp1 = (char *)stackptr;
@@ -443,13 +424,13 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		result = copyout((const void *)(ptrbuf + i), (userptr_t)stackptr, sizeof(char *));
 		if (result){
 			kfree(name);
-			kfree(buf);
 			kfree(ptrbuf);
+			kfree(buf);
 			return EFAULT;	//again, result or this?
 		}
 	}
-	kfree(ptrbuf);
 	kfree(name);
+	kfree(ptrbuf);
 	kfree(buf);
 
 
@@ -476,10 +457,16 @@ int sys_exit(int code) {
 	for (int i = 0; i < OPEN_MAX; i++) {
 		if (curproc->proc_filedesc[i] != NULL) {
 			int retval;
+//			if((i >= 0) && (i <= 2)){
+//				lock_acquire(curproc->proc_filedesc[i]->fd_lock);
+//				curproc->proc_filedesc[i]->fd_refcount--;
+//				lock_release(curproc->proc_filedesc[i]->fd_lock);
+//			}
 			sys_close(i, &retval);
 		}
 	}
 	V(curproc->proc_sem);
+
 	thread_exit();
 	return 0;
 }
@@ -503,9 +490,9 @@ int sys_sbrk(int amt, int *retval){
 			return EINVAL;
 		}
 		amt *= -1;
-
+//		vm_tlbshootdown_all();
 		if (amt >= PAGE_SIZE){
-			vm_tlbshootdown_all();
+//			vm_tlbshootdown_all();
 			for(unsigned i = ((int)(heap_top & PAGE_FRAME) - amt); i < (heap_top & PAGE_FRAME); i = i + PAGE_SIZE){
 				unsigned mask_for_first_10_bits = 0xFFC00000;
 				unsigned first_10_bits = i & mask_for_first_10_bits;
@@ -516,14 +503,19 @@ int sys_sbrk(int amt, int *retval){
 				next_10_bits = next_10_bits >> 12;
 
 				page_free(as->pte[first_10_bits][next_10_bits].ppn);
+				vm_tlbshootdownvaddr(as->pte[first_10_bits][next_10_bits].vpn);
 
 				as->pte[first_10_bits][next_10_bits].ppn = 0;
 				as->pte[first_10_bits][next_10_bits].vpn = 0;
 			}
+			*retval = heap_top;
+			heap_top -= (amt & PAGE_FRAME);
 		}
-
+		else{
 		*retval = heap_top;
-		heap_top -= amt;
+		heap_top -= (amt & PAGE_FRAME);
+		vm_tlbshootdownvaddr(heap_top);
+		}
 	}
 	else{
 		if((heap_top + amt) > (USERSTACK - MYVM_STACKPAGES * PAGE_SIZE)){

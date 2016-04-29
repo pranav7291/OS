@@ -138,13 +138,18 @@ common_prog(int nargs, char **args)
 			proc /* new process */,
 			cmd_progthread /* thread function */,
 			args /* thread arg */, nargs /* thread arg */);
-	sys_waitpid(proc->pid, &status, 1000, &retval);
-	//P(lockproc_sem);
 	if (result) {
-		kprintf("thread_fork failed: %s\n", strerror(result));
+		//		kprintf("thread_fork failed: %s\n", strerror(result));
 		proc_destroy(proc);
+		sys_exit(0);
 		return result;
 	}
+	result = sys_waitpid(proc->pid, &status, 1000, &retval);
+	if (result){
+		return 0;
+	}
+	//P(lockproc_sem);
+
 
 	/*
 	 * The new process will be destroyed when the program exits...
