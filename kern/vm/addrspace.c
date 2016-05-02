@@ -194,6 +194,7 @@ as_destroy(struct addrspace *as) {
 			reg = reg->next;
 			kfree(temp1);
 		}
+//		kfree(as->region);
 
 //		struct PTE **pte = as->pte;
 //		for (int i = 0; i < 1024; i++) {
@@ -213,11 +214,12 @@ as_destroy(struct addrspace *as) {
 		struct PTE *pte_itr = as->pte;
 		struct PTE *temp2;
 		while (pte_itr != NULL) {
+			page_free(pte_itr->ppn);
 			temp2 = pte_itr;
 			pte_itr = pte_itr->next;
 			kfree(temp2);
 		}
-
+//		kfree(as->pte);
 //		kfree(pte);	//kfree first level
 		kfree(as);
 	}

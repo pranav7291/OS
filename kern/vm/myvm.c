@@ -275,14 +275,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	//2. Check if the operation is valid by checking the page permission
 	//first check if present in the page table, if not, create page
 
-//	unsigned mask_for_first_10_bits = 0xFFC00000;
-//	unsigned first_10_bits = faultaddress & mask_for_first_10_bits;
-//	first_10_bits = first_10_bits >> 22;
-//
-//	unsigned mask_for_second_10_bits = 0x003FF000;
-//	unsigned next_10_bits = faultaddress & mask_for_second_10_bits;
-//	next_10_bits = next_10_bits >> 12;
-//	paddr_t paddr;
 	int found = 0;
 	int tlb_index = -1;
 	struct PTE *curr, *last;
@@ -312,42 +304,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		for (last = as->pte; last->next != NULL; last = last->next);
 		last->next = curr;
 	}
-//
-//	if (as->pte[first_10_bits] != NULL) {
-//		//look for second level
-//		paddr_t paddr_temp = as->pte[first_10_bits][next_10_bits].ppn;
-//		if (paddr_temp == 0) {//if not null, you get your page table entry here.
-//			paddr = page_alloc();
-//			if (paddr == 0) {
-//				return EFAULT; //out of pages
-//			}
-////			spinlock_acquire(as->pte[first_10_bits]->ptelock);
-//			as->pte[first_10_bits][next_10_bits].ppn = paddr;
-//			as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
-////			spinlock_release(as->pte[first_10_bits]->ptelock);
-//			//random tlb write
-//		} /*else {
-//			//random tlb write
-//			panic("pranav");
-//		}*/
-//	} else {
-//		//	panic("whooaaaa");
-//		as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
-//		for(int i=0; i<1024;i++) {
-//			as->pte[first_10_bits][i].ppn = 0;
-//		}
-//		paddr_t paddr = page_alloc();
-//		if (paddr == 0) {
-//			return EFAULT; //out of pages
-//		}
-////		spinlock_acquire(as->pte[first_10_bits]->ptelock);
-//		as->pte[first_10_bits][next_10_bits].ppn = paddr;
-//		as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
-////		spinlock_release(as->pte[first_10_bits]->ptelock);
-//		//todo set permissions also
-////		tlb_random(paddr, faultaddress);
-//		//random write
-//	}
+
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
 		//random write
 		spinlock_acquire(&tlb_spinlock);
