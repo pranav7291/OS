@@ -1,0 +1,537 @@
+[boot.t                ]	0.000000	0 serial
+[boot.t                ]	0.000000	1	emufs
+[boot.t                ]	0.000000	28	random seed=39752
+[boot.t                ]	0.000000	29	timer
+[boot.t                ]	0.000000	30	trace
+[boot.t                ]	0.000000	31	mainboard ramsize=1M cpus=2
+[boot.t                ]	0.000000	sys161: System/161 release 2.0.8, compiled Mar  2 2016 17:16:01
+[boot.t                ]	0.006289	
+[boot.t                ]	0.006289	OS/161 base system version 2.0.1
+[boot.t                ]	0.006289	Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014
+[boot.t                ]	0.006289	   President and Fellows of Harvard College.  All rights reserved.
+[boot.t                ]	0.237937	
+[boot.t                ]	0.237937	Put-your-group-name-here's system version 0 (ASST3 #87)
+[boot.t                ]	0.268141	
+[boot.t                ]	0.268141	736k physical memory available
+[boot.t                ]	0.288265	Device probe...
+[boot.t                ]	0.298313	lamebus0 (system main bus)
+[boot.t                ]	0.318362	emu0 at lamebus0
+[boot.t                ]	0.328433	ltrace0 at lamebus0
+[boot.t                ]	0.338528	ltimer0 at lamebus0
+[boot.t                ]	0.348585	beep0 at ltimer0
+[boot.t                ]	0.358656	rtclock0 at ltimer0
+[boot.t                ]	0.368695	lrandom0 at lamebus0
+[boot.t                ]	0.378720	random0 at lrandom0
+[boot.t                ]	0.398809	lser0 at lamebus0
+[boot.t                ]	0.408837	con0 at lser0
+[boot.t                ]	0.408837	
+[boot.t                ]	0.408837	cpu0: MIPS/161 (System/161 2.x) features 0x0
+[boot.t                ]	0.439032	2 CPUs online
+[boot.t                ]	0.449062	OS/161 kernel [? for menu]: 
+[boot.t                ]	0.509524	
+[boot.t                ]	0.519612	Shutting down.
+[boot.t                ]	0.519612	The system is halted.
+[boot.t                ]	0.529612	sys161: 20536858 cycles (12251804 run, 8285054 global-idle)
+[boot.t                ]	0.529612	sys161:   cpu0: 4763326 kern, 0 user, 135463 idle; 7437 ll, 7437/0 sc, 21318 sync
+[boot.t                ]	0.529612	sys161:   cpu1: 310305 kern, 0 user, 4588484 idle; 7 ll, 7/0 sc, 15 sync
+[boot.t                ]	0.529612	sys161: 1112 irqs 0 exns 0r/0w disk 2r/580w console 0r/0w/1m emufs 0r/0w net
+[boot.t                ]	0.529612	sys161: Elapsed real time: 0.140097 seconds (146.59 mhz)
+[boot.t                ]	0.529612	sys161: Elapsed virtual time: 0.531643279 seconds (25 mhz)
+[boot.t                ]	0.529612	shutdown: normal shutdown
+[coremap/not-dumbvm.t  ]	0.000000	0 serial
+[coremap/not-dumbvm.t  ]	0.000000	1	emufs
+[coremap/not-dumbvm.t  ]	0.000000	28	random seed=48724
+[coremap/not-dumbvm.t  ]	0.000000	29	timer
+[coremap/not-dumbvm.t  ]	0.000000	30	trace
+[coremap/not-dumbvm.t  ]	0.000000	31	mainboard ramsize=1M cpus=8
+[coremap/not-dumbvm.t  ]	0.000000	sys161: System/161 release 2.0.8, compiled Mar  2 2016 17:16:01
+[syscalls/consoletest.t]	0.000000	0 serial
+[syscalls/consoletest.t]	0.000000	1	emufs
+[syscalls/consoletest.t]	0.000000	28	random seed=36128
+[syscalls/consoletest.t]	0.000000	29	timer
+[syscalls/consoletest.t]	0.000000	30	trace
+[syscalls/consoletest.t]	0.000000	31	mainboard ramsize=512K cpus=8
+[syscalls/consoletest.t]	0.000000	sys161: System/161 release 2.0.8, compiled Mar  2 2016 17:16:01
+[coremap/not-dumbvm.t  ]	0.006289	
+[syscalls/consoletest.t]	0.006289	
+[coremap/not-dumbvm.t  ]	0.006289	OS/161 base system version 2.0.1
+[syscalls/consoletest.t]	0.006289	OS/161 base system version 2.0.1
+[coremap/not-dumbvm.t  ]	0.006289	Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014
+[syscalls/consoletest.t]	0.006289	Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014
+[coremap/not-dumbvm.t  ]	0.006289	   President and Fellows of Harvard College.  All rights reserved.
+[coremap/not-dumbvm.t  ]	0.237790	
+[syscalls/consoletest.t]	0.006289	   President and Fellows of Harvard College.  All rights reserved.
+[syscalls/consoletest.t]	0.236418	
+[coremap/not-dumbvm.t  ]	0.237790	Put-your-group-name-here's system version 0 (ASST3 #87)
+[coremap/not-dumbvm.t  ]	0.277954	
+[syscalls/consoletest.t]	0.236418	Put-your-group-name-here's system version 0 (ASST3 #87)
+[syscalls/consoletest.t]	0.266565	
+[coremap/not-dumbvm.t  ]	0.277954	736k physical memory available
+[coremap/not-dumbvm.t  ]	0.298034	Device probe...
+[syscalls/consoletest.t]	0.266565	224k physical memory available
+[coremap/not-dumbvm.t  ]	0.308038	lamebus0 (system main bus)
+[syscalls/consoletest.t]	0.286712	Device probe...
+[coremap/not-dumbvm.t  ]	0.318039	emu0 at lamebus0
+[syscalls/consoletest.t]	0.296792	lamebus0 (system main bus)
+[coremap/not-dumbvm.t  ]	0.328060	ltrace0 at lamebus0
+[syscalls/consoletest.t]	0.306814	emu0 at lamebus0
+[coremap/not-dumbvm.t  ]	0.348218	ltimer0 at lamebus0
+[syscalls/consoletest.t]	0.316822	ltrace0 at lamebus0
+[coremap/not-dumbvm.t  ]	0.358235	beep0 at ltimer0
+[syscalls/consoletest.t]	0.326860	ltimer0 at lamebus0
+[coremap/not-dumbvm.t  ]	0.368283	rtclock0 at ltimer0
+[syscalls/consoletest.t]	0.336914	beep0 at ltimer0
+[coremap/not-dumbvm.t  ]	0.378339	lrandom0 at lamebus0
+[syscalls/consoletest.t]	0.346920	rtclock0 at ltimer0
+[coremap/not-dumbvm.t  ]	0.388376	random0 at lrandom0
+[syscalls/consoletest.t]	0.357002	lrandom0 at lamebus0
+[coremap/not-dumbvm.t  ]	0.408459	lser0 at lamebus0
+[coremap/not-dumbvm.t  ]	0.418479	con0 at lser0
+[syscalls/consoletest.t]	0.377034	random0 at lrandom0
+[coremap/not-dumbvm.t  ]	0.418479	
+[syscalls/consoletest.t]	0.387042	lser0 at lamebus0
+[syscalls/consoletest.t]	0.387042	con0 at lser0
+[syscalls/consoletest.t]	0.397098	
+[coremap/not-dumbvm.t  ]	0.418479	cpu0: MIPS/161 (System/161 2.x) features 0x0
+[coremap/not-dumbvm.t  ]	0.448521	8 CPUs online
+[syscalls/consoletest.t]	0.397098	cpu0: MIPS/161 (System/161 2.x) features 0x0
+[coremap/not-dumbvm.t  ]	0.458534	OS/161 kernel [? for menu]: 
+[coremap/not-dumbvm.t  ]	0.478645	khu
+[syscalls/consoletest.t]	0.427248	8 CPUs online
+[coremap/not-dumbvm.t  ]	0.689576	
+[coremap/not-dumbvm.t  ]	0.689576	khu: 40464
+[syscalls/consoletest.t]	0.437321	OS/161 kernel [? for menu]: 
+[coremap/not-dumbvm.t  ]	0.689576	Operation took 0.005070960 seconds
+[syscalls/consoletest.t]	0.457390	p /testbin/consoletest
+[coremap/not-dumbvm.t  ]	0.709625	OS/161 kernel [? for menu]: 
+[coremap/not-dumbvm.t  ]	0.729809	km5
+[syscalls/consoletest.t]	0.849638	
+[coremap/not-dumbvm.t  ]	0.739906	km5 --> phys ram: 1024k avail ram: 736k  (184 pages) ptr blocks: 1
+[syscalls/consoletest.t]	0.849638	/testbin/consoletest: Able was i ere i saw elbA
+[syscalls/consoletest.t]	0.879873	Operation took 0.110047435 seconds
+[syscalls/consoletest.t]	0.900015	OS/161 kernel [? for menu]: 
+[syscalls/consoletest.t]	0.920160	shutdown: panic expected
+[syscalls/shell.t      ]	0.000000	0 serial
+[syscalls/shell.t      ]	0.000000	1	emufs
+[syscalls/shell.t      ]	0.000000	28	random seed=46217
+[syscalls/shell.t      ]	0.000000	29	timer
+[syscalls/shell.t      ]	0.000000	30	trace
+[syscalls/shell.t      ]	0.000000	31	mainboard ramsize=1M cpus=8
+[syscalls/shell.t      ]	0.000000	sys161: System/161 release 2.0.8, compiled Mar  2 2016 17:16:01
+[syscalls/shell.t      ]	0.006289	
+[syscalls/shell.t      ]	0.006289	OS/161 base system version 2.0.1
+[syscalls/shell.t      ]	0.006289	Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014
+[syscalls/shell.t      ]	0.006289	   President and Fellows of Harvard College.  All rights reserved.
+[syscalls/shell.t      ]	0.237817	
+[syscalls/shell.t      ]	0.237817	Put-your-group-name-here's system version 0 (ASST3 #87)
+[syscalls/shell.t      ]	0.278013	
+[syscalls/shell.t      ]	0.278013	736k physical memory available
+[syscalls/shell.t      ]	0.298138	Device probe...
+[syscalls/shell.t      ]	0.308214	lamebus0 (system main bus)
+[syscalls/shell.t      ]	0.318295	emu0 at lamebus0
+[syscalls/shell.t      ]	0.328330	ltrace0 at lamebus0
+[syscalls/shell.t      ]	0.338418	ltimer0 at lamebus0
+[syscalls/shell.t      ]	0.358480	beep0 at ltimer0
+[syscalls/shell.t      ]	0.368547	rtclock0 at ltimer0
+[syscalls/shell.t      ]	0.378629	lrandom0 at lamebus0
+[syscalls/shell.t      ]	0.388672	random0 at lrandom0
+[syscalls/shell.t      ]	0.398684	lser0 at lamebus0
+[syscalls/shell.t      ]	0.408713	con0 at lser0
+[syscalls/shell.t      ]	0.418779	
+[syscalls/shell.t      ]	0.418779	cpu0: MIPS/161 (System/161 2.x) features 0x0
+[syscalls/shell.t      ]	0.438896	8 CPUs online
+[syscalls/shell.t      ]	0.448900	OS/161 kernel [? for menu]: 
+[syscalls/shell.t      ]	0.469016	
+[syscalls/shell.t      ]	0.559429	(program name unknown): Timing enabled.
+[syscalls/shell.t      ]	0.579506	OS/161$ 
+[syscalls/shell.t      ]	0.589522	/testbin/shelltest
+[syscalls/shell.t      ]	0.730127	
+[syscalls/shell.t      ]	0.730127	/testbin/shelltest: line-1: Able was i ere i saw elbA
+[syscalls/shell.t      ]	0.760186	
+[syscalls/shell.t      ]	0.760186	/testbin/shelltest: line-2: Able was i ere i saw elbA
+[syscalls/shell.t      ]	0.790352	
+[syscalls/shell.t      ]	0.790352	/testbin/shelltest: line-3: Able was i ere i saw elbA
+[syscalls/shell.t      ]	0.820456	(program name unknown): subprocess time: 0.189051710 seconds
+[syscalls/shell.t      ]	0.860648	OS/161$ 
+[syscalls/shell.t      ]	0.870735	/testbin/shelltest
+[syscalls/shell.t      ]	1.383215	
+[syscalls/shell.t      ]	1.383215	/testbin/shelltest: line-1: Able was i ere i saw elbA
+[syscalls/shell.t      ]	1.403304	
+[syscalls/shell.t      ]	1.403304	/testbin/shelltest: line-2: Able was i ere i saw elbA
+[syscalls/shell.t      ]	1.433422	
+[syscalls/shell.t      ]	1.433422	/testbin/shelltest: line-3: Able was i ere i saw elbA
+[syscalls/shell.t      ]	1.463536	(program name unknown): subprocess time: 0.184504011 seconds
+[syscalls/shell.t      ]	1.493737	OS/161$ 
+[syscalls/shell.t      ]	1.503814	exit
+[syscalls/shell.t      ]	1.523906	Operation took 1.046515251 seconds
+[syscalls/shell.t      ]	1.533957	OS/161 kernel [? for menu]: 
+[syscalls/shell.t      ]	1.564107	
+[syscalls/shell.t      ]	1.574163	Shutting down.
+[syscalls/shell.t      ]	1.574163	The system is halted.
+[syscalls/shell.t      ]	1.584234	sys161: 52438437 cycles (27151555 run, 25286882 global-idle)
+[syscalls/shell.t      ]	1.584234	sys161:   cpu0: 14184558 kern, 48402 user, 9347 idle; 16197 ll, 16197/0 sc, 43922 sync
+[syscalls/shell.t      ]	1.584234	sys161:   cpu1: 295265 kern, 0 user, 13947042 idle; 7 ll, 7/0 sc, 15 sync
+[syscalls/shell.t      ]	1.584234	sys161:   cpu2: 294910 kern, 0 user, 13947397 idle; 6 ll, 5/1 sc, 10 sync
+[syscalls/shell.t      ]	1.584234	sys161:   cpu3: 294543 kern, 0 user, 13947764 idle; 7 ll, 5/2 sc, 10 sync
+[syscalls/shell.t      ]	1.584234	sys161:   cpu4: 294245 kern, 0 user, 13948062 idle; 8 ll, 5/3 sc, 10 sync
+[syscalls/shell.t      ]	1.584234	sys161:   cpu5: 293809 kern, 0 user, 13948498 idle; 9 ll, 5/4 sc, 10 sync
+[syscalls/shell.t      ]	1.584234	sys161:   cpu6: 293442 kern, 0 user, 13948865 idle; 10 ll, 5/5 sc, 10 sync
+[syscalls/shell.t      ]	1.584234	sys161:   cpu7: 293075 kern, 0 user, 13949232 idle; 11 ll, 5/6 sc, 10 sync
+[syscalls/shell.t      ]	1.584234	sys161: 2091 irqs 751 exns 0r/0w disk 47r/1225w console 27r/0w/7m emufs 0r/0w net
+[syscalls/shell.t      ]	1.584234	sys161: Elapsed real time: 0.572725 seconds (91.5595 mhz)
+[syscalls/shell.t      ]	1.584234	sys161: Elapsed virtual time: 1.585458634 seconds (25 mhz)
+[syscalls/shell.t      ]	1.584234	shutdown: normal shutdown
+[coremap/not-dumbvm.t  ]	0.770010	..........
+[coremap/not-dumbvm.t  ]	1.614054	
+[coremap/not-dumbvm.t  ]	1.614054	km5: SUCCESS
+[coremap/not-dumbvm.t  ]	1.624095	Operation took 0.892721040 seconds
+[coremap/not-dumbvm.t  ]	1.644168	OS/161 kernel [? for menu]: 
+[coremap/not-dumbvm.t  ]	1.664216	khu
+[coremap/not-dumbvm.t  ]	1.684243	
+[coremap/not-dumbvm.t  ]	1.684243	khu: 40464
+[coremap/not-dumbvm.t  ]	1.684243	Operation took 0.009555800 seconds
+[coremap/not-dumbvm.t  ]	1.704273	OS/161 kernel [? for menu]: 
+[coremap/not-dumbvm.t  ]	1.734425	
+[coremap/not-dumbvm.t  ]	1.754518	Shutting down.
+[coremap/not-dumbvm.t  ]	1.754518	The system is halted.
+[coremap/not-dumbvm.t  ]	1.764576	sys161: 54443669 cycles (38951622 run, 15492047 global-idle)
+[coremap/not-dumbvm.t  ]	1.764576	sys161:   cpu0: 28428070 kern, 0 user, 135298 idle; 14107 ll, 14107/0 sc, 37218 sync
+[coremap/not-dumbvm.t  ]	1.764576	sys161:   cpu1: 313053 kern, 0 user, 28250315 idle; 7 ll, 7/0 sc, 15 sync
+[coremap/not-dumbvm.t  ]	1.764576	sys161:   cpu2: 312698 kern, 0 user, 28250670 idle; 6 ll, 5/1 sc, 10 sync
+[coremap/not-dumbvm.t  ]	1.764576	sys161:   cpu3: 312331 kern, 0 user, 28251037 idle; 7 ll, 5/2 sc, 10 sync
+[coremap/not-dumbvm.t  ]	1.764576	sys161:   cpu4: 312033 kern, 0 user, 28251335 idle; 8 ll, 5/3 sc, 10 sync
+[coremap/not-dumbvm.t  ]	1.764576	sys161:   cpu5: 311597 kern, 0 user, 28251771 idle; 9 ll, 5/4 sc, 10 sync
+[coremap/not-dumbvm.t  ]	1.764576	sys161:   cpu6: 311230 kern, 0 user, 28252138 idle; 10 ll, 5/5 sc, 10 sync
+[coremap/not-dumbvm.t  ]	1.764576	sys161:   cpu7: 310863 kern, 0 user, 28252505 idle; 11 ll, 5/6 sc, 10 sync
+[coremap/not-dumbvm.t  ]	1.764576	sys161: 1816 irqs 0 exns 0r/0w disk 14r/897w console 0r/0w/1m emufs 0r/0w net
+[coremap/not-dumbvm.t  ]	1.764576	sys161: Elapsed real time: 1.033562 seconds (52.6758 mhz)
+[coremap/not-dumbvm.t  ]	1.764576	sys161: Elapsed virtual time: 1.766506525 seconds (25 mhz)
+[coremap/not-dumbvm.t  ]	1.764576	shutdown: normal shutdown
+[vm/not-dumbvm-vm.t    ]	0.000000	0 serial
+[vm/not-dumbvm-vm.t    ]	0.000000	1	emufs
+[vm/not-dumbvm-vm.t    ]	0.000000	28	random seed=17858
+[vm/not-dumbvm-vm.t    ]	0.000000	29	timer
+[vm/not-dumbvm-vm.t    ]	0.000000	30	trace
+[vm/not-dumbvm-vm.t    ]	0.000000	31	mainboard ramsize=4M cpus=8
+[vm/not-dumbvm-vm.t    ]	0.000000	sys161: System/161 release 2.0.8, compiled Mar  2 2016 17:16:01
+[vm/not-dumbvm-vm.t    ]	0.006289	
+[vm/not-dumbvm-vm.t    ]	0.006289	OS/161 base system version 2.0.1
+[vm/not-dumbvm-vm.t    ]	0.006289	Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014
+[vm/not-dumbvm-vm.t    ]	0.006289	   President and Fellows of Harvard College.  All rights reserved.
+[vm/not-dumbvm-vm.t    ]	0.238319	
+[vm/not-dumbvm-vm.t    ]	0.238319	Put-your-group-name-here's system version 0 (ASST3 #87)
+[vm/not-dumbvm-vm.t    ]	0.268567	
+[vm/not-dumbvm-vm.t    ]	0.268567	3808k physical memory available
+[vm/not-dumbvm-vm.t    ]	0.288666	Device probe...
+[vm/not-dumbvm-vm.t    ]	0.298706	lamebus0 (system main bus)
+[vm/not-dumbvm-vm.t    ]	0.308718	emu0 at lamebus0
+[vm/not-dumbvm-vm.t    ]	0.318816	ltrace0 at lamebus0
+[vm/not-dumbvm-vm.t    ]	0.328824	ltimer0 at lamebus0
+[vm/not-dumbvm-vm.t    ]	0.348946	beep0 at ltimer0
+[vm/not-dumbvm-vm.t    ]	0.359008	rtclock0 at ltimer0
+[vm/not-dumbvm-vm.t    ]	0.369094	lrandom0 at lamebus0
+[vm/not-dumbvm-vm.t    ]	0.379191	random0 at lrandom0
+[vm/not-dumbvm-vm.t    ]	0.389203	lser0 at lamebus0
+[vm/not-dumbvm-vm.t    ]	0.399290	con0 at lser0
+[vm/not-dumbvm-vm.t    ]	0.409295	
+[vm/not-dumbvm-vm.t    ]	0.409295	cpu0: MIPS/161 (System/161 2.x) features 0x0
+[vm/not-dumbvm-vm.t    ]	0.449556	8 CPUs online
+[vm/not-dumbvm-vm.t    ]	0.459562	OS/161 kernel [? for menu]: 
+[vm/not-dumbvm-vm.t    ]	0.570114	khu
+[vm/not-dumbvm-vm.t    ]	0.700758	
+[vm/not-dumbvm-vm.t    ]	0.700758	khu: 40464
+[vm/not-dumbvm-vm.t    ]	0.700758	Operation took 0.008568040 seconds
+[vm/not-dumbvm-vm.t    ]	0.710849	OS/161 kernel [? for menu]: 
+[vm/not-dumbvm-vm.t    ]	0.831377	p /testbin/huge
+[vm/not-dumbvm-vm.t    ]	1.042583	Entering the huge program - I will stress test your VM
+[vm/not-dumbvm-vm.t    ]	1.685700	stage [1] done
+[vm/not-dumbvm-vm.t    ]	1.735976	stage [2.0] done
+[vm/not-dumbvm-vm.t    ]	1.796180	stage [2.1] done
+[vm/not-dumbvm-vm.t    ]	1.846426	stage [2.2] done
+[vm/not-dumbvm-vm.t    ]	1.896731	stage [2.3] done
+[vm/not-dumbvm-vm.t    ]	1.957169	stage [2.4] done
+[vm/not-dumbvm-vm.t    ]	1.967227	stage [2] done
+[vm/not-dumbvm-vm.t    ]	2.007439	
+[vm/not-dumbvm-vm.t    ]	2.007439	/testbin/huge: SUCCESS
+[vm/not-dumbvm-vm.t    ]	2.037652	Operation took 1.066565038 seconds
+[vm/not-dumbvm-vm.t    ]	2.057739	OS/161 kernel [? for menu]: 
+[vm/not-dumbvm-vm.t    ]	2.077858	khu
+[vm/not-dumbvm-vm.t    ]	2.108008	
+[vm/not-dumbvm-vm.t    ]	2.108008	khu: 40464
+[vm/not-dumbvm-vm.t    ]	2.108008	Operation took 0.008568000 seconds
+[vm/not-dumbvm-vm.t    ]	2.118059	OS/161 kernel [? for menu]: 
+[vm/not-dumbvm-vm.t    ]	2.148266	
+[vm/not-dumbvm-vm.t    ]	2.158288	Shutting down.
+[vm/not-dumbvm-vm.t    ]	2.158288	The system is halted.
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161: 66959939 cycles (43554777 run, 23405162 global-idle)
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161:   cpu0: 30700358 kern, 40124 user, 9347 idle; 15463 ll, 15463/0 sc, 40276 sync
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161:   cpu1: 256203 kern, 0 user, 30493626 idle; 7 ll, 7/0 sc, 15 sync
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161:   cpu2: 255848 kern, 0 user, 30493981 idle; 6 ll, 5/1 sc, 10 sync
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161:   cpu3: 255481 kern, 0 user, 30494348 idle; 7 ll, 5/2 sc, 10 sync
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161:   cpu4: 255183 kern, 0 user, 30494646 idle; 8 ll, 5/3 sc, 10 sync
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161:   cpu5: 254747 kern, 0 user, 30495082 idle; 9 ll, 5/4 sc, 10 sync
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161:   cpu6: 254380 kern, 0 user, 30495449 idle; 10 ll, 5/5 sc, 10 sync
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161:   cpu7: 254013 kern, 0 user, 30495816 idle; 11 ll, 5/6 sc, 10 sync
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161: 1987 irqs 7237 exns 0r/0w disk 26r/1022w console 9r/0w/3m emufs 0r/0w net
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161: Elapsed real time: 1.064291 seconds (62.9151 mhz)
+[vm/not-dumbvm-vm.t    ]	2.168322	sys161: Elapsed virtual time: 2.170490805 seconds (25 mhz)
+[vm/not-dumbvm-vm.t    ]	2.168322	shutdown: normal shutdown
+[vm/sbrktest.t         ]	0.000000	0 serial
+[vm/sbrktest.t         ]	0.000000	1	emufs
+[vm/sbrktest.t         ]	0.000000	28	random seed=62950
+[vm/sbrktest.t         ]	0.000000	29	timer
+[vm/sbrktest.t         ]	0.000000	30	trace
+[vm/sbrktest.t         ]	0.000000	31	mainboard ramsize=2M cpus=8
+[vm/sbrktest.t         ]	0.000000	sys161: System/161 release 2.0.8, compiled Mar  2 2016 17:16:01
+[vm/sbrk-badcall.t     ]	0.000000	0 serial
+[vm/sbrk-badcall.t     ]	0.000000	1	emufs
+[vm/sbrk-badcall.t     ]	0.000000	28	random seed=61660
+[vm/sbrk-badcall.t     ]	0.000000	29	timer
+[vm/sbrk-badcall.t     ]	0.000000	30	trace
+[vm/sbrk-badcall.t     ]	0.000000	31	mainboard ramsize=1M cpus=8
+[vm/sbrk-badcall.t     ]	0.000000	sys161: System/161 release 2.0.8, compiled Mar  2 2016 17:16:01
+[vm/sbrktest.t         ]	0.006289	
+[vm/sbrk-badcall.t     ]	0.006289	
+[vm/sbrktest.t         ]	0.006289	OS/161 base system version 2.0.1
+[vm/sbrk-badcall.t     ]	0.006289	OS/161 base system version 2.0.1
+[vm/sbrktest.t         ]	0.006289	Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014
+[vm/sbrk-badcall.t     ]	0.006289	Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014
+[vm/sbrktest.t         ]	0.006289	   President and Fellows of Harvard College.  All rights reserved.
+[vm/sbrktest.t         ]	0.237437	
+[vm/sbrk-badcall.t     ]	0.006289	   President and Fellows of Harvard College.  All rights reserved.
+[vm/sbrk-badcall.t     ]	0.237846	
+[vm/sbrktest.t         ]	0.237437	Put-your-group-name-here's system version 0 (ASST3 #87)
+[vm/sbrktest.t         ]	0.277562	
+[vm/sbrk-badcall.t     ]	0.237846	Put-your-group-name-here's system version 0 (ASST3 #87)
+[vm/sbrk-badcall.t     ]	0.278172	
+[vm/sbrktest.t         ]	0.277562	1760k physical memory available
+[vm/sbrk-badcall.t     ]	0.278172	736k physical memory available
+[vm/sbrktest.t         ]	0.297630	Device probe...
+[vm/sbrk-badcall.t     ]	0.298316	Device probe...
+[vm/sbrktest.t         ]	0.307664	lamebus0 (system main bus)
+[vm/sbrk-badcall.t     ]	0.308416	lamebus0 (system main bus)
+[vm/sbrktest.t         ]	0.327796	emu0 at lamebus0
+[vm/sbrk-badcall.t     ]	0.318448	emu0 at lamebus0
+[vm/sbrktest.t         ]	0.337840	ltrace0 at lamebus0
+[vm/sbrk-badcall.t     ]	0.328506	ltrace0 at lamebus0
+[vm/sbrk-badcall.t     ]	0.338514	ltimer0 at lamebus0
+[vm/sbrktest.t         ]	0.347875	ltimer0 at lamebus0
+[vm/sbrk-badcall.t     ]	0.348576	beep0 at ltimer0
+[vm/sbrktest.t         ]	0.357962	beep0 at ltimer0
+[vm/sbrk-badcall.t     ]	0.358592	rtclock0 at ltimer0
+[vm/sbrktest.t         ]	0.378142	rtclock0 at ltimer0
+[vm/sbrk-badcall.t     ]	0.368672	lrandom0 at lamebus0
+[vm/sbrktest.t         ]	0.388223	lrandom0 at lamebus0
+[vm/sbrk-badcall.t     ]	0.388829	random0 at lrandom0
+[vm/sbrktest.t         ]	0.398320	random0 at lrandom0
+[vm/sbrk-badcall.t     ]	0.398928	lser0 at lamebus0
+[vm/sbrktest.t         ]	0.408375	lser0 at lamebus0
+[vm/sbrk-badcall.t     ]	0.408938	con0 at lser0
+[vm/sbrk-badcall.t     ]	0.418945	
+[vm/sbrktest.t         ]	0.418437	con0 at lser0
+[vm/sbrktest.t         ]	0.428520	
+[vm/sbrk-badcall.t     ]	0.418945	cpu0: MIPS/161 (System/161 2.x) features 0x0
+[vm/sbrktest.t         ]	0.428520	cpu0: MIPS/161 (System/161 2.x) features 0x0
+[vm/sbrk-badcall.t     ]	0.439069	8 CPUs online
+[vm/sbrktest.t         ]	0.458605	8 CPUs online
+[vm/sbrk-badcall.t     ]	0.449149	OS/161 kernel [? for menu]: 
+[vm/sbrk-badcall.t     ]	0.469302	
+[vm/sbrktest.t         ]	0.468616	OS/161 kernel [? for menu]: 
+[vm/sbrktest.t         ]	0.498711	khu
+[vm/sbrktest.t         ]	0.508744	
+[vm/sbrktest.t         ]	0.508744	khu: 40464
+[vm/sbrktest.t         ]	0.508744	Operation took 0.008156920 seconds
+[vm/sbrktest.t         ]	0.528858	OS/161 kernel [? for menu]: 
+[vm/sbrktest.t         ]	0.549054	
+[vm/sbrk-badcall.t     ]	0.559805	(program name unknown): Timing enabled.
+[vm/sbrk-badcall.t     ]	0.579917	OS/161$ 
+[vm/sbrk-badcall.t     ]	0.579917	/testbin/badcall h
+[vm/sbrktest.t         ]	0.629451	(program name unknown): Timing enabled.
+[vm/sbrktest.t         ]	0.659574	OS/161$ 
+[vm/sbrktest.t         ]	0.659574	/testbin/sbrktest 1
+[vm/sbrk-badcall.t     ]	1.183169	[a-|, 1-4, *, ?=menu, !=quit]
+[vm/sbrk-badcall.t     ]	1.203248	Choose: h
+[vm/sbrktest.t         ]	0.820250	Allocating a page...
+[vm/sbrk-badcall.t     ]	1.213331	badcall: sbrk too-large negative... Invalid argument                    passed
+[vm/sbrktest.t         ]	0.840366	
+[vm/sbrktest.t         ]	0.840366	/testbin/sbrktest: SUCCESS
+[vm/sbrk-badcall.t     ]	1.243489	badcall: sbrk huge positive... Out of memory                            passed
+[vm/sbrktest.t         ]	0.860516	(program name unknown): subprocess time: 0.151358074 seconds
+[vm/sbrk-badcall.t     ]	1.273627	badcall: sbrk huge negative... Invalid argument                         passed
+[vm/sbrktest.t         ]	0.890743	OS/161$ 
+[vm/sbrk-badcall.t     ]	1.313773	badcall: sbrk unaligned positive... Invalid argument                    passed
+[vm/sbrktest.t         ]	0.900768	/testbin/sbrktest 2
+[vm/sbrk-badcall.t     ]	1.363915	badcall: sbrk unaligned negative... Invalid argument                    passed
+[vm/sbrk-badcall.t     ]	1.404124	
+[vm/sbrk-badcall.t     ]	1.404124	/testbin/badcall: SUCCESS
+[vm/sbrk-badcall.t     ]	1.424237	(program name unknown): subprocess time: 0.367230540 seconds
+[vm/sbrk-badcall.t     ]	1.464384	OS/161$ 
+[vm/sbrk-badcall.t     ]	1.474403	exit
+[vm/sbrktest.t         ]	1.101570	Allocating a page...
+[vm/sbrk-badcall.t     ]	1.494460	Operation took 1.015743339 seconds
+[vm/sbrktest.t         ]	1.121701	Freeing the page...
+[vm/sbrktest.t         ]	1.131737	
+[vm/sbrk-badcall.t     ]	1.514498	OS/161 kernel [? for menu]: 
+[vm/sbrk-badcall.t     ]	1.534607	
+[vm/sbrktest.t         ]	1.131737	/testbin/sbrktest: SUCCESS
+[vm/sbrk-badcall.t     ]	1.544672	Shutting down.
+[vm/sbrk-badcall.t     ]	1.544672	The system is halted.
+[vm/sbrktest.t         ]	1.151920	(program name unknown): subprocess time: 0.166388113 seconds
+[vm/sbrktest.t         ]	1.192081	OS/161$ 
+[vm/sbrk-badcall.t     ]	1.554717	sys161: 51547171 cycles (25904555 run, 25642616 global-idle)
+[vm/sbrk-badcall.t     ]	1.554717	sys161:   cpu0: 13123391 kern, 41390 user, 9347 idle; 15857 ll, 15857/0 sc, 42807 sync
+[vm/sbrk-badcall.t     ]	1.554717	sys161:   cpu1: 255981 kern, 0 user, 12918147 idle; 7 ll, 7/0 sc, 15 sync
+[vm/sbrk-badcall.t     ]	1.554717	sys161:   cpu2: 255626 kern, 0 user, 12918502 idle; 6 ll, 5/1 sc, 10 sync
+[vm/sbrk-badcall.t     ]	1.554717	sys161:   cpu3: 255259 kern, 0 user, 12918869 idle; 7 ll, 5/2 sc, 10 sync
+[vm/sbrk-badcall.t     ]	1.554717	sys161:   cpu4: 254961 kern, 0 user, 12919167 idle; 8 ll, 5/3 sc, 10 sync
+[vm/sbrk-badcall.t     ]	1.554717	sys161:   cpu5: 254525 kern, 0 user, 12919603 idle; 9 ll, 5/4 sc, 10 sync
+[vm/sbrk-badcall.t     ]	1.554717	sys161:   cpu6: 254158 kern, 0 user, 12919970 idle; 10 ll, 5/5 sc, 10 sync
+[vm/sbrk-badcall.t     ]	1.554717	sys161:   cpu7: 253791 kern, 0 user, 12920337 idle; 11 ll, 5/6 sc, 10 sync
+[vm/sbrk-badcall.t     ]	1.554717	sys161: 2096 irqs 721 exns 0r/0w disk 28r/1263w console 20r/0w/5m emufs 0r/0w net
+[vm/sbrk-badcall.t     ]	1.554717	sys161: Elapsed real time: 0.544746 seconds (94.6261 mhz)
+[vm/sbrk-badcall.t     ]	1.554717	sys161: Elapsed virtual time: 1.556960528 seconds (25 mhz)
+[vm/sbrk-badcall.t     ]	1.554717	shutdown: normal shutdown
+[vm/sbrktest.t         ]	1.202117	/testbin/sbrktest 3
+[vm/sbrktest.t         ]	1.383111	Allocating 6 pages...
+[vm/sbrktest.t         ]	1.413263	Freeing the pages...
+[vm/sbrktest.t         ]	1.433376	
+[vm/sbrktest.t         ]	1.433376	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	1.453509	(program name unknown): subprocess time: 0.183175003 seconds
+[vm/sbrktest.t         ]	1.483749	OS/161$ 
+[vm/sbrktest.t         ]	1.493809	/testbin/sbrktest 4
+[vm/sbrktest.t         ]	1.654421	Allocating 6 pages...
+[vm/sbrktest.t         ]	1.674455	Freeing the pages one at a time...
+[vm/sbrktest.t         ]	1.714710	
+[vm/sbrktest.t         ]	1.714710	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	1.734740	(program name unknown): subprocess time: 0.194238725 seconds
+[vm/sbrktest.t         ]	1.764952	OS/161$ 
+[vm/sbrktest.t         ]	1.774974	/testbin/sbrktest 5
+[vm/sbrktest.t         ]	1.955974	This should produce fatal signal 11 (SIGSEGV).
+[vm/sbrktest.t         ]	2.006281	
+[vm/sbrktest.t         ]	2.006281	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	2.026469	(program name unknown): subprocess time: 0.210748062 seconds
+[vm/sbrktest.t         ]	2.056657	OS/161$ 
+[vm/sbrktest.t         ]	2.066707	/testbin/sbrktest 6
+[vm/sbrktest.t         ]	2.247923	This should produce fatal signal 11 (SIGSEGV).
+[vm/sbrktest.t         ]	2.288118	
+[vm/sbrktest.t         ]	2.288118	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	2.308280	(program name unknown): subprocess time: 0.202680149 seconds
+[vm/sbrktest.t         ]	2.348405	OS/161$ 
+[vm/sbrktest.t         ]	2.358458	/testbin/sbrktest 7
+[vm/sbrktest.t         ]	2.549430	This should produce fatal signal 11 (SIGSEGV).
+[vm/sbrktest.t         ]	2.599618	
+[vm/sbrktest.t         ]	2.599618	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	2.619710	(program name unknown): subprocess time: 0.213174425 seconds
+[vm/sbrktest.t         ]	2.649915	OS/161$ 
+[vm/sbrktest.t         ]	2.669927	/testbin/sbrktest 8
+[vm/sbrktest.t         ]	2.860763	This should produce fatal signal 11 (SIGSEGV).
+[vm/sbrktest.t         ]	2.911044	
+[vm/sbrktest.t         ]	2.911044	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	2.931125	(program name unknown): subprocess time: 0.216965374 seconds
+[vm/sbrktest.t         ]	2.971432	OS/161$ 
+[vm/sbrktest.t         ]	2.981465	/testbin/sbrktest 11
+[vm/sbrktest.t         ]	3.142008	Allocating 256 pages (1048576 bytes).
+[vm/sbrktest.t         ]	3.172152	Touching the pages.
+[vm/sbrktest.t         ]	3.182180	...........................................................(program name unknown): subprocess time: 0.467453047 seconds
+[vm/sbrktest.t         ]	3.523837	Signal 11
+[vm/sbrktest.t         ]	3.533913	OS/161$ 
+[vm/sbrktest.t         ]	3.543977	/testbin/sbrktest 12
+[vm/sbrktest.t         ]	3.704770	Forking...
+[vm/sbrktest.t         ]	3.744966	Parent allocating a page...
+[vm/sbrktest.t         ]	3.764982	Child allocating a page...
+[vm/sbrktest.t         ]	3.774989	Child done.
+[vm/sbrktest.t         ]	3.785000	Parent done.
+[vm/sbrktest.t         ]	3.795073	Passed sbrk test 12.
+[vm/sbrktest.t         ]	3.805135	
+[vm/sbrktest.t         ]	3.815143	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	3.825207	(program name unknown): subprocess time: 0.244247562 seconds
+[vm/sbrktest.t         ]	3.865454	OS/161$ 
+[vm/sbrktest.t         ]	3.875529	/testbin/sbrktest 13
+[vm/sbrktest.t         ]	4.036425	Allocating a page...
+[vm/sbrktest.t         ]	4.056587	Forking...
+[vm/sbrktest.t         ]	4.096713	Passed sbrk test 13.
+[vm/sbrktest.t         ]	4.116747	
+[vm/sbrktest.t         ]	4.126819	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	4.146979	(program name unknown): subprocess time: 0.227343221 seconds
+[vm/sbrktest.t         ]	4.187172	OS/161$ 
+[vm/sbrktest.t         ]	4.197222	/testbin/sbrktest 14
+[vm/sbrktest.t         ]	4.358044	Allocating a page...
+[vm/sbrktest.t         ]	4.378134	Forking...
+[vm/sbrktest.t         ]	4.418257	Child freeing a page...
+[vm/sbrktest.t         ]	4.438365	Passed sbrk test 14.
+[vm/sbrktest.t         ]	4.448394	
+[vm/sbrktest.t         ]	4.458400	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	4.468474	(program name unknown): subprocess time: 0.231592207 seconds
+[vm/sbrktest.t         ]	4.498583	OS/161$ 
+[vm/sbrktest.t         ]	4.508641	/testbin/sbrktest 15
+[vm/sbrktest.t         ]	4.669645	Allocating 12 pages...
+[vm/sbrktest.t         ]	4.719895	Freeing one page...
+[vm/sbrktest.t         ]	4.740003	Allocating two pages...
+[vm/sbrktest.t         ]	4.770077	Forking...
+[vm/sbrktest.t         ]	4.840500	Parent: allocating four pages
+[vm/sbrktest.t         ]	4.860598	Child: freeing three pages
+[vm/sbrktest.t         ]	4.870609	Parent: waiting
+[vm/sbrktest.t         ]	4.880670	Child: allocating two pages
+[vm/sbrktest.t         ]	4.900812	Child: freeing all
+[vm/sbrktest.t         ]	4.920897	Passed sbrk test 15.
+[vm/sbrktest.t         ]	4.930961	
+[vm/sbrktest.t         ]	4.930961	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	4.951031	(program name unknown): subprocess time: 0.399291190 seconds
+[vm/sbrktest.t         ]	4.981248	OS/161$ 
+[vm/sbrktest.t         ]	4.991310	/testbin/sbrktest 17
+[vm/sbrktest.t         ]	5.161993	Seeded random number generator with 3994424435.
+[vm/sbrktest.t         ]	5.202278	..................................................
+[vm/sbrktest.t         ]	30.107321	Passed sbrk small stress test.
+[vm/sbrktest.t         ]	30.137447	
+[vm/sbrktest.t         ]	30.137447	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	30.157519	(program name unknown): subprocess time: 25.123171336 seconds
+[vm/sbrktest.t         ]	30.197722	OS/161$ 
+[vm/sbrktest.t         ]	30.197722	/testbin/sbrktest 22
+[vm/sbrktest.t         ]	30.388776	
+[vm/sbrktest.t         ]	30.388776	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	30.408915	(program name unknown): subprocess time: 0.165297680 seconds
+[vm/sbrktest.t         ]	30.459143	OS/161$ 
+[vm/sbrktest.t         ]	30.469168	/testbin/sbrktest 23
+[vm/sbrktest.t         ]	30.871119	..........
+[vm/sbrktest.t         ]	41.755768	/testbin/sbrktest: SUCCESS
+[vm/sbrktest.t         ]	41.775926	(program name unknown): subprocess time: 11.266501105 seconds
+[vm/sbrktest.t         ]	41.806120	OS/161$ 
+[vm/sbrktest.t         ]	41.816192	exit
+[vm/sbrktest.t         ]	41.836334	Operation took 41.279727831 seconds
+[vm/sbrktest.t         ]	41.856461	OS/161 kernel [? for menu]: 
+[vm/sbrktest.t         ]	41.886635	khu
+[vm/sbrktest.t         ]	41.926789	
+[vm/sbrktest.t         ]	41.926789	khu: 2125481360
+[vm/sbrktest.t         ]	41.926789	Operation took 0.009929520 seconds
+[vm/sbrktest.t         ]	41.946810	OS/161 kernel [? for menu]: 
+[vm/sbrktest.t         ]	41.966874	
+[vm/sbrktest.t         ]	41.987021	Shutting down.
+[vm/sbrktest.t         ]	41.987021	The system is halted.
+[vm/sbrktest.t         ]	41.997088	sys161: 1088524461 cycles (1026751665 run, 61772796 global-idle)
+[vm/sbrktest.t         ]	41.997088	sys161:   cpu0: 982526325 kern, 5560110 user, 9347 idle; 643849 ll, 643849/0 sc, 1320551 sync
+[vm/sbrktest.t         ]	41.997088	sys161:   cpu1: 310166 kern, 0 user, 987785616 idle; 7 ll, 7/0 sc, 15 sync
+[vm/sbrktest.t         ]	41.997088	sys161:   cpu2: 309811 kern, 0 user, 987785971 idle; 6 ll, 5/1 sc, 10 sync
+[vm/sbrktest.t         ]	41.997088	sys161:   cpu3: 309444 kern, 0 user, 987786338 idle; 7 ll, 5/2 sc, 10 sync
+[vm/sbrktest.t         ]	41.997088	sys161:   cpu4: 309146 kern, 0 user, 987786636 idle; 8 ll, 5/3 sc, 10 sync
+[vm/sbrktest.t         ]	41.997088	sys161:   cpu5: 308710 kern, 0 user, 987787072 idle; 9 ll, 5/4 sc, 10 sync
+[vm/sbrktest.t         ]	41.997088	sys161:   cpu6: 308343 kern, 0 user, 987787439 idle; 10 ll, 5/5 sc, 10 sync
+[vm/sbrktest.t         ]	41.997088	sys161:   cpu7: 307976 kern, 0 user, 987787806 idle; 11 ll, 5/6 sc, 10 sync
+[vm/sbrktest.t         ]	41.997088	sys161: 10114 irqs 167383 exns 0r/0w disk 345r/3916w console 169r/0w/35m emufs 0r/0w net
+[vm/sbrktest.t         ]	41.997088	sys161: Elapsed real time: 33.433501 seconds (32.5579 mhz)
+[vm/sbrktest.t         ]	41.997088	sys161: Elapsed virtual time: 41.999038764 seconds (25 mhz)
+[vm/sbrktest.t         ]	41.997088	shutdown: normal shutdown
+[vm/sbrktest.t         ]	41.997088	memory leak: Warning: memory leak detected (2125440896 bytes)
+
+Test                             Result           Memory Leaks
+------------------------------   ----------   ----------------
+boot.t                           correct                   ---
+syscalls/consoletest.t           correct                   ---
+coremap/not-dumbvm.t             correct                  None
+syscalls/shell.t                 correct                   ---
+vm/not-dumbvm-vm.t               correct                  None
+vm/sbrktest.t                    incorrect    2125440896 bytes
+vm/sbrk-badcall.t                correct                   ---
+
+Total Correct  : 6/7
+Total Incorrect: 1/7
+

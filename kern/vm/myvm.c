@@ -275,57 +275,85 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	//2. Check if the operation is valid by checking the page permission
 	//first check if present in the page table, if not, create page
 
-	unsigned mask_for_first_10_bits = 0xFFC00000;
-	unsigned first_10_bits = faultaddress & mask_for_first_10_bits;
-	first_10_bits = first_10_bits >> 22;
-
-	unsigned mask_for_second_10_bits = 0x003FF000;
-	unsigned next_10_bits = faultaddress & mask_for_second_10_bits;
-	next_10_bits = next_10_bits >> 12;
+//	unsigned mask_for_first_10_bits = 0xFFC00000;
+//	unsigned first_10_bits = faultaddress & mask_for_first_10_bits;
+//	first_10_bits = first_10_bits >> 22;
+//
+//	unsigned mask_for_second_10_bits = 0x003FF000;
+//	unsigned next_10_bits = faultaddress & mask_for_second_10_bits;
+//	next_10_bits = next_10_bits >> 12;
 	paddr_t paddr;
+	int found = 0;
 	int tlb_index = -1;
-	if (as->pte[first_10_bits] != NULL) {
-		//look for second level
-		paddr_t paddr_temp = as->pte[first_10_bits][next_10_bits].ppn;
-		if (paddr_temp == 0) {//if not null, you get your page table entry here.
-			paddr = page_alloc();
-			if (paddr == 0) {
-				return EFAULT; //out of pages
-			}
-//			spinlock_acquire(as->pte[first_10_bits]->ptelock);
-			as->pte[first_10_bits][next_10_bits].ppn = paddr;
-			as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
-//			spinlock_release(as->pte[first_10_bits]->ptelock);
-			//random tlb write
-		} /*else {
-			//random tlb write
-			panic("pranav");
-		}*/
+	struct PTE *temp_pte;
+
+	if (as->pte == NULL) {
+		temp_pte = as->pte;
+		found = 0;
 	} else {
-		//	panic("whooaaaa");
-		as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
-		for(int i=0; i<1024;i++) {
-			as->pte[first_10_bits][i].ppn = 0;
-		}
-		paddr_t paddr = page_alloc();
-		if (paddr == 0) {
-			return EFAULT; //out of pages
-		}
-//		spinlock_acquire(as->pte[first_10_bits]->ptelock);
-		as->pte[first_10_bits][next_10_bits].ppn = paddr;
-		as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
-//		spinlock_release(as->pte[first_10_bits]->ptelock);
-		//todo set permissions also
-//		tlb_random(paddr, faultaddress);
-		//random write
+		//if the first pte is the required pte
+		temp_pte = as->pte;
+		do{
+			//search the ilinked list for this vaddr signified by the fault address
+			if (temp_pte->vpn == faultaddress && PAGE_FRAME) {
+				//found the vaddr.
+				found = 1;
+				break;
+			}
+			//not found
+			temp_pte = temp_pte->next;
+		} while (temp_pte != NULL);
 	}
+	if (found == 0) {
+		//vaddr not found. kmalloc and add to tlb
+		temp_pte = temp_pte->next;
+		temp_pte = kmalloc(sizeof(struct PTE));
+		temp_pte->ppn = page_alloc();
+		temp_pte->vpn = faultaddress && PAGE_SIZE;
+	}
+//
+//	if (as->pte[first_10_bits] != NULL) {
+//		//look for second level
+//		paddr_t paddr_temp = as->pte[first_10_bits][next_10_bits].ppn;
+//		if (paddr_temp == 0) {//if not null, you get your page table entry here.
+//			paddr = page_alloc();
+//			if (paddr == 0) {
+//				return EFAULT; //out of pages
+//			}
+////			spinlock_acquire(as->pte[first_10_bits]->ptelock);
+//			as->pte[first_10_bits][next_10_bits].ppn = paddr;
+//			as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
+////			spinlock_release(as->pte[first_10_bits]->ptelock);
+//			//random tlb write
+//		} /*else {
+//			//random tlb write
+//			panic("pranav");
+//		}*/
+//	} else {
+//		//	panic("whooaaaa");
+//		as->pte[first_10_bits] = kmalloc(sizeof(struct PTE) * 1024);
+//		for(int i=0; i<1024;i++) {
+//			as->pte[first_10_bits][i].ppn = 0;
+//		}
+//		paddr_t paddr = page_alloc();
+//		if (paddr == 0) {
+//			return EFAULT; //out of pages
+//		}
+////		spinlock_acquire(as->pte[first_10_bits]->ptelock);
+//		as->pte[first_10_bits][next_10_bits].ppn = paddr;
+//		as->pte[first_10_bits][next_10_bits].vpn = faultaddress;
+////		spinlock_release(as->pte[first_10_bits]->ptelock);
+//		//todo set permissions also
+////		tlb_random(paddr, faultaddress);
+//		//random write
+//	}
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
 		//random write
 		spinlock_acquire(&tlb_spinlock);
 		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
 		if(tlb_index < 0){
-			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
+			paddr_t phy_page_no = temp_pte->ppn;
 			tlb_random((faultaddress & PAGE_FRAME ), ((phy_page_no & PAGE_FRAME)| TLBLO_VALID));
 		}
 		splx(x);
@@ -335,7 +363,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
 		if(tlb_index >= 0){
-			paddr_t phy_page_no = as->pte[first_10_bits][next_10_bits].ppn;
+			paddr_t phy_page_no = temp_pte->ppn;
 			tlb_write((faultaddress & PAGE_FRAME), ((phy_page_no & PAGE_FRAME) | TLBLO_DIRTY | TLBLO_VALID), tlb_index);
 		}
 		splx(x);
