@@ -282,7 +282,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 //	unsigned mask_for_second_10_bits = 0x003FF000;
 //	unsigned next_10_bits = faultaddress & mask_for_second_10_bits;
 //	next_10_bits = next_10_bits >> 12;
-	paddr_t paddr;
+//	paddr_t paddr;
 	int found = 0;
 	int tlb_index = -1;
 	struct PTE *temp_pte;
