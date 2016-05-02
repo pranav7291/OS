@@ -285,31 +285,32 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 //	paddr_t paddr;
 	int found = 0;
 	int tlb_index = -1;
-	struct PTE *temp_pte;
+	struct PTE *curr, *last;
 
 	if (as->pte == NULL) {
-		temp_pte = as->pte;
-		found = 0;
+		found = 1;
+		as->pte = kmalloc(sizeof(struct PTE));
+		as->pte->ppn = page_alloc();
+		as->pte->vpn = faultaddress & PAGE_FRAME;
+		as->pte->next = NULL;
+		curr = as->pte;
 	} else {
 		//if the first pte is the required pte
-		temp_pte = as->pte;
-		do{
-			//search the ilinked list for this vaddr signified by the fault address
-			if (temp_pte->vpn == faultaddress && PAGE_FRAME) {
-				//found the vaddr.
+		for (curr = as->pte; curr != NULL; curr = curr->next){
+			if(curr->vpn == (faultaddress & PAGE_FRAME)){
 				found = 1;
 				break;
 			}
-			//not found
-			temp_pte = temp_pte->next;
-		} while (temp_pte != NULL);
+		}
 	}
 	if (found == 0) {
 		//vaddr not found. kmalloc and add to tlb
-		temp_pte = temp_pte->next;
-		temp_pte = kmalloc(sizeof(struct PTE));
-		temp_pte->ppn = page_alloc();
-		temp_pte->vpn = faultaddress && PAGE_SIZE;
+		curr = kmalloc(sizeof(struct PTE));
+		curr->ppn = page_alloc();
+		curr->vpn = faultaddress & PAGE_FRAME;
+		curr->next = NULL;
+		for (last = as->pte; last->next != NULL; last = last->next);
+		last->next = curr;
 	}
 //
 //	if (as->pte[first_10_bits] != NULL) {
@@ -353,7 +354,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
 		if(tlb_index < 0){
-			paddr_t phy_page_no = temp_pte->ppn;
+			paddr_t phy_page_no = curr->ppn;
 			tlb_random((faultaddress & PAGE_FRAME ), ((phy_page_no & PAGE_FRAME)| TLBLO_VALID));
 		}
 		splx(x);
@@ -363,7 +364,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
 		if(tlb_index >= 0){
-			paddr_t phy_page_no = temp_pte->ppn;
+			paddr_t phy_page_no = curr->ppn;
 			tlb_write((faultaddress & PAGE_FRAME), ((phy_page_no & PAGE_FRAME) | TLBLO_DIRTY | TLBLO_VALID), tlb_index);
 		}
 		splx(x);
