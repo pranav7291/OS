@@ -493,20 +493,37 @@ int sys_sbrk(int amt, int *retval){
 //		vm_tlbshootdown_all();
 		if (amt >= PAGE_SIZE){
 //			vm_tlbshootdown_all();
+
 			for(unsigned i = ((int)(heap_top & PAGE_FRAME) - amt); i < (heap_top & PAGE_FRAME); i = i + PAGE_SIZE){
-				unsigned mask_for_first_10_bits = 0xFFC00000;
-				unsigned first_10_bits = i & mask_for_first_10_bits;
-				first_10_bits = first_10_bits >> 22;
+//				unsigned mask_for_first_10_bits = 0xFFC00000;
+//				unsigned first_10_bits = i & mask_for_first_10_bits;
+//				first_10_bits = first_10_bits >> 22;
+//
+//				unsigned mask_for_second_10_bits = 0x003FF000;
+//				unsigned next_10_bits = i & mask_for_second_10_bits;
+//				next_10_bits = next_10_bits >> 12;
+				struct PTE *prev, *curr;
+				prev = as->pte;
+				for (curr = as->pte; curr->next != NULL; curr = curr->next){
+					if(curr->vpn == i){
+						page_free(curr->ppn);
+						vm_tlbshootdownvaddr(curr->vpn);
+						prev->next = curr->next;
+						kfree(curr);
+						break;
+					}
+					else{
+						//panic
+					}
+					prev = prev->next;
+				}
 
-				unsigned mask_for_second_10_bits = 0x003FF000;
-				unsigned next_10_bits = i & mask_for_second_10_bits;
-				next_10_bits = next_10_bits >> 12;
 
-				page_free(as->pte[first_10_bits][next_10_bits].ppn);
-				vm_tlbshootdownvaddr(as->pte[first_10_bits][next_10_bits].vpn);
-
-				as->pte[first_10_bits][next_10_bits].ppn = 0;
-				as->pte[first_10_bits][next_10_bits].vpn = 0;
+//				page_free(as->pte[first_10_bits][next_10_bits].ppn);
+//				vm_tlbshootdownvaddr(as->pte[first_10_bits][next_10_bits].vpn);
+//
+//				as->pte[first_10_bits][next_10_bits].ppn = 0;
+//				as->pte[first_10_bits][next_10_bits].vpn = 0;
 			}
 			*retval = heap_top;
 			heap_top -= (amt & PAGE_FRAME);

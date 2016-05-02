@@ -50,24 +50,12 @@ as_create(void)
 		return NULL;
 	}
 
-	/*
-	 * Initialize as needed.
-	 */
-	//as->pages = NULL;
-	as->pte =  kmalloc(sizeof(struct PTE *) * 1024);
-	if(as->pte==NULL) {
-		kfree(as);
-		return NULL;
-	}
-//	for (int i = 0; i < 1024; i++){
-//		as->pte[i] = NULL;
+//	as->pte =  kmalloc(sizeof(struct PTE *) * 1024);
+//	if(as->pte==NULL) {
+//		kfree(as);
+//		return NULL;
 //	}
-//	if (as->pte[0] == NULL) {
-//		panic("Sammokka 1");
-//	}
-//	if (as->pte[1] == NULL) {
-//		panic("Sammokka 2");
-//	}
+	as->pte = NULL;
 	as->region = NULL;
 	as->stack_ptr = USERSTACK - (MYVM_STACKPAGES * PAGE_SIZE);
 	as->heap_bottom = (vaddr_t) 0;
@@ -119,36 +107,70 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 	}
 
 	//copy PTEs
-	struct PTE **oldpte = old_addrspace->pte;
-	struct PTE **newpte = new_as->pte;
-	for (int i = 0; i < 1024; i++) {
-		if (oldpte[i] != NULL) {
-//			spinlock_acquire(oldpte[i]->ptelock);
-			newpte[i] = kmalloc(sizeof(struct PTE) * 1024); //second level kmalloc
-			if (newpte[i] == NULL) {
-//				spinlock_release(oldpte[i]->ptelock);
+//	struct PTE **oldpte = old_addrspace->pte;
+//	struct PTE **newpte = new_as->pte;
+//	for (int i = 0; i < 1024; i++) {
+//		if (oldpte[i] != NULL) {
+////			spinlock_acquire(oldpte[i]->ptelock);
+//			newpte[i] = kmalloc(sizeof(struct PTE) * 1024); //second level kmalloc
+//			if (newpte[i] == NULL) {
+////				spinlock_release(oldpte[i]->ptelock);
+//				as_destroy(new_as);
+//				return ENOMEM;
+//			}
+//			for (int j = 0; j < 1024; j++) {
+//				if (oldpte[i][j].ppn != 0) {
+//					if (newpte[i] == NULL) {
+//						as_destroy(new_as);
+//						return ENOMEM;
+//					}
+////					spinlock_init(newpte[i][j].ptelock);
+//					newpte[i][j].vpn = oldpte[i][j].vpn;
+//					newpte[i][j].ppn = page_alloc();
+//					memmove((void *) PADDR_TO_KVADDR(newpte[i][j].ppn), (const void *) PADDR_TO_KVADDR(oldpte[i][j].ppn), PAGE_SIZE);
+//					newpte[i][j].permission = oldpte[i][j].permission;
+//					newpte[i][j].referenced = oldpte[i][j].referenced;
+//					newpte[i][j].state = oldpte[i][j].state;
+//					newpte[i][j].valid = oldpte[i][j].valid;
+//				}
+//			}
+////		spinlock_release(oldpte[i]->ptelock);
+//		}
+//	}
+
+	struct PTE *old_pte_itr = old_addrspace->pte;
+	struct PTE *temp1, *new_pte;
+
+	while (old_pte_itr != NULL) {
+		if (new_as->pte == NULL) {
+			new_as->pte = (struct PTE *) kmalloc(sizeof(struct PTE));
+			if (new_as->pte == NULL) {
 				as_destroy(new_as);
 				return ENOMEM;
 			}
-			for (int j = 0; j < 1024; j++) {
-				if (oldpte[i][j].ppn != 0) {
-					if (newpte[i] == NULL) {
-						as_destroy(new_as);
-						return ENOMEM;
-					}
-//					spinlock_init(newpte[i][j].ptelock);
-					newpte[i][j].vpn = oldpte[i][j].vpn;
-					newpte[i][j].ppn = page_alloc();
-					memmove((void *) PADDR_TO_KVADDR(newpte[i][j].ppn), (const void *) PADDR_TO_KVADDR(oldpte[i][j].ppn), PAGE_SIZE);
-					newpte[i][j].permission = oldpte[i][j].permission;
-					newpte[i][j].referenced = oldpte[i][j].referenced;
-					newpte[i][j].state = oldpte[i][j].state;
-					newpte[i][j].valid = oldpte[i][j].valid;
-				}
+			new_as->pte->next = NULL;
+			new_pte = new_as->pte;
+		} else {
+			for (temp1 = new_as->pte; temp1->next != NULL; temp1 = temp1->next);
+			new_pte = (struct PTE *) kmalloc(sizeof(struct PTE));
+			if(new_pte==NULL) {
+				as_destroy(new_as);
+				return ENOMEM;
 			}
-//		spinlock_release(oldpte[i]->ptelock);
+			temp1->next = new_pte;
 		}
+		new_pte->vpn = old_pte_itr->vpn;
+		new_pte->ppn = old_pte_itr->ppn;
+		memmove((void *) PADDR_TO_KVADDR(new_pte->ppn), (const void *) PADDR_TO_KVADDR(old_pte_itr->ppn), PAGE_SIZE);
+		new_pte->permission = old_pte_itr->permission;
+		new_pte->referenced = old_pte_itr->referenced;
+		new_pte->state = old_pte_itr->state;
+		new_pte->valid = old_pte_itr->valid;
+		new_pte->next = NULL;
+
+		old_pte_itr = old_pte_itr->next;
 	}
+
 	new_as->heap_bottom = old_addrspace->heap_bottom;
 	new_as->heap_top = old_addrspace->heap_top;
 	new_as->stack_ptr = old_addrspace->stack_ptr;
@@ -173,21 +195,30 @@ as_destroy(struct addrspace *as) {
 			kfree(temp1);
 		}
 
-		struct PTE **pte = as->pte;
-		for (int i = 0; i < 1024; i++) {
-			if (pte[i] != NULL) {
-//				vm_tlbshootdown_all();
-				for (int j = 0; j < 1024; j++) {
-					if (pte[i][j].ppn != 0) {
-						page_free(pte[i][j].ppn);// & PAGE_FRAME);
-					}
-				}
-//				spinlock_cleanup(pte[i]->ptelock);
-//				page_free(pte[i][j]->ppn & PAGE_FRAME);
-				kfree(pte[i]);	//kfree second level
-			}
+//		struct PTE **pte = as->pte;
+//		for (int i = 0; i < 1024; i++) {
+//			if (pte[i] != NULL) {
+////				vm_tlbshootdown_all();
+//				for (int j = 0; j < 1024; j++) {
+//					if (pte[i][j].ppn != 0) {
+//						page_free(pte[i][j].ppn);// & PAGE_FRAME);
+//					}
+//				}
+////				spinlock_cleanup(pte[i]->ptelock);
+////				page_free(pte[i][j]->ppn & PAGE_FRAME);
+//				kfree(pte[i]);	//kfree second level
+//			}
+//		}
+
+		struct PTE *pte_itr = as->pte;
+		struct PTE *temp2;
+		while (pte_itr != NULL) {
+			temp2 = pte_itr;
+			pte_itr = pte_itr->next;
+			kfree(temp2);
 		}
-		kfree(pte);	//kfree first level
+
+//		kfree(pte);	//kfree first level
 		kfree(as);
 	}
 }

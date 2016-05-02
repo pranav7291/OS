@@ -64,7 +64,7 @@ struct PTE{
 	bool valid;		//has a physical page been allocated for this virtual page or not
 	bool referenced;	//has the page been read or written to recently
 //	struct spinlock *ptelock;
-	//struct PTE *next;
+	struct PTE *next;
 };
 
 struct region{
@@ -87,7 +87,7 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 #else*/
-        struct PTE **pte;
+        struct PTE *pte;
         struct region *region;
         vaddr_t stack_ptr;
         vaddr_t heap_bottom;
