@@ -182,7 +182,6 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 	if (pt_proc[pid]->isexited == false) {
 		P(pt_proc[pid]->proc_sem);
 	}
-	*retval = pid;
 
 	if (status != NULL) {
 //		int exitcd = pt_proc[pid]->exitcode;
@@ -196,6 +195,8 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 			return result;
 		}
 	}
+	*retval = pid;
+
 	sem_destroy(pt_proc[pid]->proc_sem);
 	proc_destroy(pt_proc[pid]);
 	pt_proc[pid] = NULL;
@@ -510,18 +511,9 @@ int sys_sbrk(int amt, int *retval){
 			return EINVAL;
 		}
 		amt *= -1;
-//		vm_tlbshootdown_all();
+		//		vm_tlbshootdown_all();
 		if (amt >= PAGE_SIZE){
-//			vm_tlbshootdown_all();
-
 			for(unsigned i = ((int)(heap_top & PAGE_FRAME) - amt); i < (heap_top & PAGE_FRAME); i = i + PAGE_SIZE){
-//				unsigned mask_for_first_10_bits = 0xFFC00000;
-//				unsigned first_10_bits = i & mask_for_first_10_bits;
-//				first_10_bits = first_10_bits >> 22;
-//
-//				unsigned mask_for_second_10_bits = 0x003FF000;
-//				unsigned next_10_bits = i & mask_for_second_10_bits;
-//				next_10_bits = next_10_bits >> 12;
 				struct PTE *prev, *curr;
 				if (as->pte->vpn == i) {
 					curr = as->pte;
@@ -543,19 +535,14 @@ int sys_sbrk(int amt, int *retval){
 					}
 				}
 
-//				page_free(as->pte[first_10_bits][next_10_bits].ppn);
-//				vm_tlbshootdownvaddr(as->pte[first_10_bits][next_10_bits].vpn);
-//
-//				as->pte[first_10_bits][next_10_bits].ppn = 0;
-//				as->pte[first_10_bits][next_10_bits].vpn = 0;
 			}
 			*retval = heap_top;
 			heap_top -= (amt & PAGE_FRAME);
 		}
 		else{
-		*retval = heap_top;
-		heap_top -= (amt & PAGE_FRAME);
-		vm_tlbshootdownvaddr(heap_top);
+			*retval = heap_top;
+			heap_top -= (amt & PAGE_FRAME);
+			vm_tlbshootdownvaddr(heap_top);
 		}
 	}
 	else{
