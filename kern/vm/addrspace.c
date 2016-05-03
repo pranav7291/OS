@@ -160,7 +160,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			temp1->next = new_pte;
 		}
 		new_pte->vpn = old_pte_itr->vpn;
-		new_pte->ppn = old_pte_itr->ppn;
+		new_pte->ppn = page_alloc();
 		memmove((void *) PADDR_TO_KVADDR(new_pte->ppn), (const void *) PADDR_TO_KVADDR(old_pte_itr->ppn), PAGE_SIZE);
 		new_pte->permission = old_pte_itr->permission;
 		new_pte->referenced = old_pte_itr->referenced;
