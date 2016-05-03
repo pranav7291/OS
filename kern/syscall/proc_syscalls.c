@@ -88,7 +88,7 @@ static void entrypoint(void* data1, unsigned long data2) {
 int sys_fork(struct trapframe *tf, int *retval)  {
 
 	//create new thread
-
+	*retval = -1;
 	struct proc *newproc;
 	newproc = proc_create_runprogram("name");
 

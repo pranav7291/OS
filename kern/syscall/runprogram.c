@@ -91,6 +91,7 @@ runprogram(char *progname)
 	struct filedesc *filedesc_ptr_in;
 	filedesc_ptr_in = kmalloc(sizeof(*filedesc_ptr_in));
 	if(filedesc_ptr_in == NULL){
+		vfs_close(v);
 		return ENOMEM;
 	}
 	mode_t mode = 0664;
@@ -100,10 +101,17 @@ runprogram(char *progname)
 	int returner_in = vfs_open(filedesc_ptr_in->name, filedesc_ptr_in->flags, mode,
 			&ret_in);
 	if (returner_in) {
+		vfs_close(v);
+		kfree(filedesc_ptr_in);
 		return returner_in;
 	}
 
 	filedesc_ptr_in->fd_lock = lock_create("con:input"); //not sure when i should use this lock
+	if(filedesc_ptr_in->fd_lock == NULL){
+		vfs_close(v);
+		kfree(filedesc_ptr_in);
+		return ENOMEM;
+	}
 	filedesc_ptr_in->isempty = 0; //not empty
 	filedesc_ptr_in->fd_vnode = ret_in; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_in->read_count = 1;
@@ -121,6 +129,7 @@ runprogram(char *progname)
 	mode = 0664;
 	filedesc_ptr_out = kmalloc(sizeof(*filedesc_ptr_out));
 	if(filedesc_ptr_out == NULL){
+		vfs_close(v);
 		kfree(filedesc_ptr_in);
 		return ENOMEM;
 	}
@@ -131,10 +140,19 @@ runprogram(char *progname)
 			&ret_out);
 
 	if (returner_out) {
+		vfs_close(v);
+		kfree(filedesc_ptr_in);
+		kfree(filedesc_ptr_out);
 		return returner_out;
 	}
 
 	filedesc_ptr_out->fd_lock = lock_create("con:output"); //not sure when i should use this lock
+	if(filedesc_ptr_out->fd_lock == NULL){
+		vfs_close(v);
+		kfree(filedesc_ptr_in);
+		kfree(filedesc_ptr_out);
+		return ENOMEM;
+	}
 	filedesc_ptr_out->isempty = 0; //not empty
 	filedesc_ptr_out->fd_vnode = ret_out; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_out->read_count = 1;
@@ -151,6 +169,7 @@ runprogram(char *progname)
 	mode = 0664;
 	filedesc_ptr_err = kmalloc(sizeof(*filedesc_ptr_err));
 	if(filedesc_ptr_err == NULL){
+		vfs_close(v);
 		kfree(filedesc_ptr_in);
 		kfree(filedesc_ptr_out);
 		return ENOMEM;
@@ -161,10 +180,21 @@ runprogram(char *progname)
 	int returner_err = vfs_open(filedesc_ptr_err->name, filedesc_ptr_err->flags, mode,
 			&ret_err);
 	if (returner_err) {
+		vfs_close(v);
+		kfree(filedesc_ptr_in);
+		kfree(filedesc_ptr_out);
+		kfree(filedesc_ptr_err);
 		return returner_err;
 	}
 
 	filedesc_ptr_err->fd_lock = lock_create("con:error"); //not sure when i should use this lock
+	if(filedesc_ptr_err->fd_lock == NULL){
+		vfs_close(v);
+		kfree(filedesc_ptr_in);
+		kfree(filedesc_ptr_out);
+		kfree(filedesc_ptr_err);
+		return ENOMEM;
+	}
 	filedesc_ptr_err->isempty = 0; //not empty
 	filedesc_ptr_err->fd_vnode = ret_err; //pointer to vnode object to be stored in filedesc->vnode
 	filedesc_ptr_err->read_count = 1;
@@ -180,6 +210,9 @@ runprogram(char *progname)
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
 		vfs_close(v);
+		kfree(curproc->proc_filedesc[0]);
+		kfree(curproc->proc_filedesc[1]);
+		kfree(curproc->proc_filedesc[2]);
 		return result;
 	}
 

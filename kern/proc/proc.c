@@ -223,6 +223,9 @@ proc_create_runprogram(const char *name) {
 		return NULL;
 	}
 	newproc->proc_sem = sem_create(name, 0);
+	if(newproc->proc_sem == NULL){
+		return NULL;
+	}
 
 	insert_process_into_process_table(newproc);
 

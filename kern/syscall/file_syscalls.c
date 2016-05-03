@@ -97,6 +97,10 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 				return ENOMEM;
 			}
 			filedesc_ptr->fd_lock = lock_create(name); //not sure when i should use this lock
+			if(filedesc_ptr->fd_lock == NULL){
+				*retval = -1;
+				return ENOMEM;
+			}
 			filedesc_ptr->isempty = 0; //not empty
 			filedesc_ptr->fd_vnode = ret; //pointer to vnode object to be stored in filedesc->vnode
 			filedesc_ptr->flags = flags;
