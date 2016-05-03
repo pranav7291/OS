@@ -282,6 +282,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	if (as->pte == NULL) {
 		found = 1;
 		as->pte = kmalloc(sizeof(struct PTE));
+		if(as->pte == NULL){
+			return ENOMEM;
+		}
 		as->pte->ppn = page_alloc();
 		as->pte->vpn = faultaddress & PAGE_FRAME;
 		as->pte->next = NULL;
@@ -298,6 +301,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	if (found == 0) {
 		//vaddr not found. kmalloc and add to tlb
 		curr = kmalloc(sizeof(struct PTE));
+		if(curr == NULL){
+			return ENOMEM;
+		}
 		curr->ppn = page_alloc();
 		curr->vpn = faultaddress & PAGE_FRAME;
 		curr->next = NULL;

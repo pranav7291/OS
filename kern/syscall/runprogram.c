@@ -90,6 +90,9 @@ runprogram(char *progname)
 
 	struct filedesc *filedesc_ptr_in;
 	filedesc_ptr_in = kmalloc(sizeof(*filedesc_ptr_in));
+	if(filedesc_ptr_in == NULL){
+		return ENOMEM;
+	}
 	mode_t mode = 0664;
 	filedesc_ptr_in->name = kstrdup("con:");
 	filedesc_ptr_in->flags = O_RDONLY;
@@ -117,6 +120,10 @@ runprogram(char *progname)
 	struct filedesc *filedesc_ptr_out;
 	mode = 0664;
 	filedesc_ptr_out = kmalloc(sizeof(*filedesc_ptr_out));
+	if(filedesc_ptr_out == NULL){
+		kfree(filedesc_ptr_in);
+		return ENOMEM;
+	}
 	filedesc_ptr_out->flags = O_WRONLY;
 	filedesc_ptr_out->name = kstrdup("con:");
 
@@ -143,6 +150,11 @@ runprogram(char *progname)
 	struct filedesc *filedesc_ptr_err;
 	mode = 0664;
 	filedesc_ptr_err = kmalloc(sizeof(*filedesc_ptr_err));
+	if(filedesc_ptr_err == NULL){
+		kfree(filedesc_ptr_in);
+		kfree(filedesc_ptr_out);
+		return ENOMEM;
+	}
 	filedesc_ptr_err->flags = O_WRONLY;
 	filedesc_ptr_err->name = kstrdup("con:");
 

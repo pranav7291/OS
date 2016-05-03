@@ -92,6 +92,10 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			//now create a filedesc structure
 			struct filedesc *filedesc_ptr;
 			filedesc_ptr = kmalloc(sizeof(*filedesc_ptr));
+			if(filedesc_ptr == NULL){
+				*retval = -1;
+				return ENOMEM;
+			}
 			filedesc_ptr->fd_lock = lock_create(name); //not sure when i should use this lock
 			filedesc_ptr->isempty = 0; //not empty
 			filedesc_ptr->fd_vnode = ret; //pointer to vnode object to be stored in filedesc->vnode
@@ -104,6 +108,10 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 //				//printf("Opening in append mode\n");
 				struct stat *stat_obj;
 				stat_obj = kmalloc(sizeof(struct stat));
+				if(stat_obj == NULL){
+					*retval = -1;
+					return ENOMEM;
+				}
 				int vopstat_returner = VOP_STAT(ret, stat_obj);
 				if (vopstat_returner != 0) {
 //					//printf("vopstat_returner did not return 0, some error\n");
@@ -171,7 +179,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 	if (write_buf == NULL) {
 		lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		*retval = -1;
-		return EINVAL;
+		return ENOMEM;
 	}
 
 	struct iovec iov;
@@ -417,6 +425,9 @@ int sys_chdir(const char *path){
 	char *path2;
 	size_t size;
 	path2 = (char *) kmalloc(sizeof(char)*PATH_MAX);
+	if(path2 == NULL){
+		return ENOMEM;
+	}
 
 	result = copyinstr((const_userptr_t)path, path2, PATH_MAX,&size);
 
@@ -442,7 +453,8 @@ int sys___getcwd(char *buf, size_t buflen, int *retval){
 	char *cwdbuf;
 	cwdbuf = kmalloc(sizeof(*buf) * buflen);
 	if (cwdbuf == NULL) {
-		return EINVAL;
+		*retval = -1;
+		return ENOMEM;
 	}
 
 	int result;

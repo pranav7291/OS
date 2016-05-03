@@ -99,6 +99,9 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 
 	//Copy parents trapframe
 	struct trapframe *tf_child = kmalloc(sizeof(struct trapframe));
+	if(tf_child == NULL){
+		return ENOMEM;
+	}
 	*tf_child = *tf;
 	//kprintf("tf_child mem -> %p\n", tf_child);
 	//kprintf("tf mem -> %p\n", tf);
@@ -187,15 +190,15 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 				sizeof(int));
 
 		if (result) {
-//			sem_destroy(pt_proc[pid]->proc_sem);
-//			proc_destroy(pt_proc[pid]);
-//			pt_proc[pid] = NULL;
+			sem_destroy(pt_proc[pid]->proc_sem);
+			proc_destroy(pt_proc[pid]);
+			pt_proc[pid] = NULL;
 			return result;
 		}
 	}
-//	sem_destroy(pt_proc[pid]->proc_sem);
-//	proc_destroy(pt_proc[pid]);
-//	pt_proc[pid] = NULL;
+	sem_destroy(pt_proc[pid]->proc_sem);
+	proc_destroy(pt_proc[pid]);
+	pt_proc[pid] = NULL;
 	//kprintf("\ndestroyed pid %d", pid);
 	return 0;
 }
@@ -235,6 +238,9 @@ int sys_execv(const char *program, char **uargs, int *retval){
 
 
 	name = (char *)kmalloc(sizeof(char) *PATH_MAX);
+	if(name == NULL){
+		return ENOMEM;
+	}
 	result = copyinstr((const_userptr_t)program, name, PATH_MAX,&length);
 	if (result){
 		kfree(name);
@@ -287,7 +293,16 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	}
 
 	char *buf = (char *) kmalloc(sizeof(char) * (totallen+1));
+	if(buf == NULL){
+		kfree(name);
+		return ENOMEM;
+	}
 	char **ptrbuf = (char **) kmalloc(sizeof(char **) * x);
+	if(ptrbuf == NULL){
+		kfree(name);
+		kfree(buf);
+		return ENOMEM;
+	}
 	char *temp = buf;
 	while (uargs[i] != NULL ) {
 		//		args[i] = (char *) kmalloc(sizeof(char) * PATH_MAX);
@@ -468,10 +483,10 @@ int sys_exit(int code) {
 	V(curproc->proc_sem);
 
 	thread_exit();
-	pid_t pid = curproc->pid;
-	sem_destroy(curproc->proc_sem);
-	proc_destroy(curproc);
-	pt_proc[pid] = NULL;
+//	pid_t pid = curproc->pid;
+//	sem_destroy(curproc->proc_sem);
+//	proc_destroy(curproc);
+//	pt_proc[pid] = NULL;
 
 	return 0;
 }
@@ -508,21 +523,25 @@ int sys_sbrk(int amt, int *retval){
 //				unsigned next_10_bits = i & mask_for_second_10_bits;
 //				next_10_bits = next_10_bits >> 12;
 				struct PTE *prev, *curr;
-				prev = as->pte;
-				for (curr = as->pte; curr->next != NULL; curr = curr->next){
-					if(curr->vpn == i){
-						page_free(curr->ppn);
-						vm_tlbshootdownvaddr(curr->vpn);
-						prev->next = curr->next;
-						kfree(curr);
-						break;
+				if (as->pte->vpn == i) {
+					curr = as->pte;
+					as->pte = as->pte->next;
+					page_free(curr->ppn);
+					vm_tlbshootdownvaddr(curr->vpn);
+					kfree(curr);
+				} else {
+					prev = as->pte;
+					for (curr = as->pte->next; curr != NULL; curr =	curr->next) {
+						if (curr->vpn == i) {
+							page_free(curr->ppn);
+							vm_tlbshootdownvaddr(curr->vpn);
+							prev->next = curr->next;
+							kfree(curr);
+							break;
+						}
+						prev = prev->next;
 					}
-					else{
-						//panic
-					}
-					prev = prev->next;
 				}
-
 
 //				page_free(as->pte[first_10_bits][next_10_bits].ppn);
 //				vm_tlbshootdownvaddr(as->pte[first_10_bits][next_10_bits].vpn);
