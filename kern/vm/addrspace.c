@@ -181,9 +181,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 
 void
 as_destroy(struct addrspace *as) {
-	/*
-	 * Clean up as needed.
-	 */
+
 	if (as != NULL) {
 		vm_tlbshootdown_all();
 
@@ -195,18 +193,18 @@ as_destroy(struct addrspace *as) {
 			kfree(temp1);
 		}
 //		kfree(as->region);
-
+//
 //		struct PTE **pte = as->pte;
 //		for (int i = 0; i < 1024; i++) {
 //			if (pte[i] != NULL) {
-////				vm_tlbshootdown_all();
+//				//				vm_tlbshootdown_all();
 //				for (int j = 0; j < 1024; j++) {
 //					if (pte[i][j].ppn != 0) {
 //						page_free(pte[i][j].ppn);// & PAGE_FRAME);
 //					}
 //				}
-////				spinlock_cleanup(pte[i]->ptelock);
-////				page_free(pte[i][j]->ppn & PAGE_FRAME);
+//				//				spinlock_cleanup(pte[i]->ptelock);
+//				//				page_free(pte[i][j]->ppn & PAGE_FRAME);
 //				kfree(pte[i]);	//kfree second level
 //			}
 //		}
@@ -219,8 +217,8 @@ as_destroy(struct addrspace *as) {
 			pte_itr = pte_itr->next;
 			kfree(temp2);
 		}
-//		kfree(as->pte);
-//		kfree(pte);	//kfree first level
+		//		kfree(as->pte);
+		//		kfree(pte);	//kfree first level
 		kfree(as);
 	}
 }
