@@ -213,6 +213,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	char *name;
 	int i = 0;
 
+//	kprintf("\ninside execv:entered:");
+//	kheap_printused();
 
 	*retval = -1;
 
@@ -448,6 +450,9 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	kfree(name);
 	kfree(ptrbuf);
 	kfree(buf);
+
+//	kprintf("\ninside execv:before enter_n_p:");
+//	kheap_printused();
 
 
 	/* Warp to user mode. */

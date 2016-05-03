@@ -243,17 +243,19 @@ int sys_close(int fd, ssize_t *retval) {
 	} else if (curproc->proc_filedesc[fd] == NULL) {
 		return EBADF;
 	} else {
-		int refcount;
-		lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
-		refcount = --curproc->proc_filedesc[fd]->fd_refcount;
-		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+		if (curproc->proc_filedesc[fd] != NULL) {
+			int refcount;
+//			lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+			refcount = --curproc->proc_filedesc[fd]->fd_refcount;
+//			lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
-		if (refcount == 0) {
-			vfs_close(curproc->proc_filedesc[fd]->fd_vnode);
-			lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
-			kfree(curproc->proc_filedesc[fd]->name);
-			kfree(curproc->proc_filedesc[fd]);
-			curproc->proc_filedesc[fd] = NULL;
+			if (refcount == 0) {
+				vfs_close(curproc->proc_filedesc[fd]->fd_vnode);
+				lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
+				kfree(curproc->proc_filedesc[fd]->name);
+				kfree(curproc->proc_filedesc[fd]);
+				curproc->proc_filedesc[fd] = NULL;
+			}
 		}
 		*retval = 0;
 		return 0;
