@@ -187,15 +187,15 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 				sizeof(int));
 
 		if (result) {
-			sem_destroy(pt_proc[pid]->proc_sem);
-			proc_destroy(pt_proc[pid]);
-			pt_proc[pid] = NULL;
+//			sem_destroy(pt_proc[pid]->proc_sem);
+//			proc_destroy(pt_proc[pid]);
+//			pt_proc[pid] = NULL;
 			return result;
 		}
 	}
-	sem_destroy(pt_proc[pid]->proc_sem);
-	proc_destroy(pt_proc[pid]);
-	pt_proc[pid] = NULL;
+//	sem_destroy(pt_proc[pid]->proc_sem);
+//	proc_destroy(pt_proc[pid]);
+//	pt_proc[pid] = NULL;
 	//kprintf("\ndestroyed pid %d", pid);
 	return 0;
 }
@@ -468,6 +468,11 @@ int sys_exit(int code) {
 	V(curproc->proc_sem);
 
 	thread_exit();
+	pid_t pid = curproc->pid;
+	sem_destroy(curproc->proc_sem);
+	proc_destroy(curproc);
+	pt_proc[pid] = NULL;
+
 	return 0;
 }
 
