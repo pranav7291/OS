@@ -192,6 +192,10 @@ as_destroy(struct addrspace *as) {
 			reg = reg->next;
 			kfree(temp1);
 		}
+		int i = sizeof(struct addrspace);
+		i = sizeof(struct region);
+		i = sizeof(struct PTE);
+		(void)i;
 //		kfree(as->region);
 //
 //		struct PTE **pte = as->pte;

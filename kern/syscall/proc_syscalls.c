@@ -88,6 +88,7 @@ static void entrypoint(void* data1, unsigned long data2) {
 int sys_fork(struct trapframe *tf, int *retval)  {
 
 	//create new thread
+	kprintf(".");
 	*retval = -1;
 	struct proc *newproc;
 	newproc = proc_create_runprogram("name");
@@ -478,11 +479,6 @@ int sys_exit(int code) {
 	for (int i = 0; i < OPEN_MAX; i++) {
 		if (curproc->proc_filedesc[i] != NULL) {
 			int retval;
-//			if((i >= 0) && (i <= 2)){
-//				lock_acquire(curproc->proc_filedesc[i]->fd_lock);
-//				curproc->proc_filedesc[i]->fd_refcount--;
-//				lock_release(curproc->proc_filedesc[i]->fd_lock);
-//			}
 			sys_close(i, &retval);
 		}
 	}

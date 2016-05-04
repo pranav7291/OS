@@ -247,7 +247,7 @@ int sys_close(int fd, ssize_t *retval) {
 	} else if (curproc->proc_filedesc[fd] == NULL) {
 		return EBADF;
 	} else {
-		if (curproc->proc_filedesc[fd] != NULL) {
+//		if (curproc->proc_filedesc[fd] != NULL) {
 			int refcount;
 //			lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 			refcount = --curproc->proc_filedesc[fd]->fd_refcount;
@@ -260,7 +260,7 @@ int sys_close(int fd, ssize_t *retval) {
 				kfree(curproc->proc_filedesc[fd]);
 				curproc->proc_filedesc[fd] = NULL;
 			}
-		}
+//		}
 		*retval = 0;
 		return 0;
 	}
