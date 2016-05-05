@@ -52,6 +52,7 @@
 #include <kern/proc_syscalls.h>
 #include <kern/errno.h>
 #include <synch.h>
+#include <vfs.h>
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
@@ -110,6 +111,33 @@ proc_destroy(struct proc *proc)
 	 * hang around beyond process exit. Some wait/exit designs
 	 * do, some don't.
 	 */
+
+	//adding filedesc close
+	for (int i = 0; i < OPEN_MAX; i++) {
+		if (proc->proc_filedesc[i] != NULL) {
+			int refcount;
+			proc->proc_filedesc[i]->fd_refcount--;
+			refcount = proc->proc_filedesc[i]->fd_refcount;
+
+			if (refcount == 0) {
+				vfs_close(proc->proc_filedesc[i]->fd_vnode);
+				lock_destroy(proc->proc_filedesc[i]->fd_lock);
+				kfree(proc->proc_filedesc[i]->name);
+				kfree(proc->proc_filedesc[i]);
+				proc->proc_filedesc[i] = NULL;
+			}
+			proc->proc_filedesc[i] = NULL;
+		}
+	}
+
+	//removing the thread
+//	struct thread *cur;
+//
+//	cur = curthread;
+//
+//	proc_remthread(cur);
+//	KASSERT(cur->t_proc == NULL);
+
 
 	KASSERT(proc != NULL);
 	KASSERT(proc != kproc);
@@ -176,13 +204,6 @@ proc_destroy(struct proc *proc)
 
 	spinlock_cleanup(&proc->p_lock);
 	kfree(proc->p_name);
-	for (int i = 0; i < OPEN_MAX; i++) {
-//		if((i >= 0) && (i <= 2) && (proc->proc_filedesc[i] != NULL)){
-//			int retval;
-//			sys_close(i, &retval);
-//		}
-		proc->proc_filedesc[i] = NULL;
-	}
 	KASSERT(proc->p_numthreads == 0);
 	kfree(proc);
 }

@@ -486,19 +486,17 @@ int sys_exit(int code) {
 	else {
 		curproc->exitcode=_MKWAIT_SIG(code);
 	}
-	for (int i = 0; i < OPEN_MAX; i++) {
-		if (curproc->proc_filedesc[i] != NULL) {
-			int retval;
-			sys_close(i, &retval);
-		}
-	}
+//	for (int i = 0; i < OPEN_MAX; i++) {
+//		if (curproc->proc_filedesc[i] != NULL) {
+//			int retval;
+//			sys_close(i, &retval);
+//		}
+//	}
 	V(curproc->proc_sem);
 
 	thread_exit();
-//	pid_t pid = curproc->pid;
-//	sem_destroy(curproc->proc_sem);
-//	proc_destroy(curproc);
-//	pt_proc[pid] = NULL;
+	pid_t pid = curproc->pid;
+	pt_proc[pid] = NULL;
 
 	return 0;
 }
