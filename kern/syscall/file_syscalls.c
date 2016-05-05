@@ -98,6 +98,7 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 			}
 			filedesc_ptr->fd_lock = lock_create(name); //not sure when i should use this lock
 			if(filedesc_ptr->fd_lock == NULL){
+				kfree(filedesc_ptr);
 				*retval = -1;
 				return ENOMEM;
 			}
@@ -113,6 +114,8 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 				struct stat *stat_obj;
 				stat_obj = kmalloc(sizeof(struct stat));
 				if(stat_obj == NULL){
+					kfree(filedesc_ptr);
+//					lock_destroy(filedesc_ptr->fd_lock);
 					*retval = -1;
 					return ENOMEM;
 				}
@@ -250,7 +253,8 @@ int sys_close(int fd, ssize_t *retval) {
 //		if (curproc->proc_filedesc[fd] != NULL) {
 			int refcount;
 //			lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
-			refcount = --curproc->proc_filedesc[fd]->fd_refcount;
+			curproc->proc_filedesc[fd]->fd_refcount--;
+			refcount = curproc->proc_filedesc[fd]->fd_refcount;
 //			lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
 			if (refcount == 0) {

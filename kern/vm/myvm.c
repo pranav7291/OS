@@ -136,6 +136,7 @@ void free_kpages(vaddr_t addr) {
 		vm_tlbshootdownvaddr(addr + (index * PAGE_SIZE));
 		coremap[j].state = FREE;
 		coremap[j].size = 1;
+//		bzero((void *)(addr + (index * PAGE_SIZE)), PAGE_SIZE );
 		index++;
 	}
 
@@ -179,6 +180,7 @@ void page_free(paddr_t paddr) {
 	coremap[i].state = FREE;
 	coremap[i].size = 1;
 
+//	bzero((void *)PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE );
 	usedBytes = usedBytes - PAGE_SIZE;
 	spinlock_release(&coremap_spinlock);
 	return;
@@ -286,6 +288,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			return ENOMEM;
 		}
 		as->pte->ppn = page_alloc();
+		if(as->pte->ppn == (vaddr_t)0){
+			return ENOMEM;
+		}
 		as->pte->vpn = faultaddress & PAGE_FRAME;
 		as->pte->next = NULL;
 		curr = as->pte;
@@ -305,6 +310,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			return ENOMEM;
 		}
 		curr->ppn = page_alloc();
+		if(curr->ppn == (vaddr_t)0){
+			return ENOMEM;
+		}
 		curr->vpn = faultaddress & PAGE_FRAME;
 		curr->next = NULL;
 		for (last = as->pte; last->next != NULL; last = last->next);

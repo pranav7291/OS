@@ -56,7 +56,7 @@ pid_t insert_process_into_process_table(struct proc *newproc) {
 	lock_release(p_lock);
 	if (i == 256) {
 		//kprintf("out of proc table slots!!\n");
-		return ENOMEM;
+		return -1;
 	} else {
 		return i;
 	}
@@ -92,15 +92,22 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	*retval = -1;
 	struct proc *newproc;
 	newproc = proc_create_runprogram("name");
+	if(newproc == NULL){
+		return ENOMEM;
+	}
 
 	//Copy parents address space
 	if (as_copy(curproc->p_addrspace,&newproc->p_addrspace)) {
+//		sem_destroy(newproc->proc_sem);
+//		proc_destroy(newproc);
 		return ENOMEM;
 	}
 
 	//Copy parents trapframe
 	struct trapframe *tf_child = kmalloc(sizeof(struct trapframe));
 	if(tf_child == NULL){
+//		sem_destroy(newproc->proc_sem);
+//		proc_destroy(newproc);
 		return ENOMEM;
 	}
 	*tf_child = *tf;
@@ -126,6 +133,8 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 	if(thread_fork("Child Thread", newproc,
 					entrypoint,  (void* ) tf_child,
 					(unsigned long)0)) {
+//		sem_destroy(newproc->proc_sem);
+//		proc_destroy(newproc);
 		return ENOMEM;
 	}
 
@@ -184,6 +193,8 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 		P(pt_proc[pid]->proc_sem);
 	}
 
+	*retval = pid;
+
 	if (status != NULL) {
 //		int exitcd = pt_proc[pid]->exitcode;
 		int result = copyout((const void *) &(pt_proc[pid]->exitcode), (userptr_t) status,
@@ -196,7 +207,6 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 			return result;
 		}
 	}
-	*retval = pid;
 
 	sem_destroy(pt_proc[pid]->proc_sem);
 	proc_destroy(pt_proc[pid]);
@@ -358,10 +368,10 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	/* Create a new address space. */
 	curproc->p_addrspace = as_create();
 	if (curproc->p_addrspace == NULL) {
+		vfs_close(v);
 		kfree(name);
 		kfree(ptrbuf);
 		kfree(buf);
-		vfs_close(v);
 		return ENOMEM;
 	}
 
@@ -373,10 +383,10 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	result = load_elf(v, &entrypoint);
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
+		vfs_close(v);
 		kfree(name);
 		kfree(ptrbuf);
 		kfree(buf);
-		vfs_close(v);
 		return result;
 	}
 

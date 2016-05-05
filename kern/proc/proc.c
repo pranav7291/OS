@@ -224,10 +224,15 @@ proc_create_runprogram(const char *name) {
 	}
 	newproc->proc_sem = sem_create(name, 0);
 	if(newproc->proc_sem == NULL){
+		proc_destroy(newproc);
 		return NULL;
 	}
 
-	insert_process_into_process_table(newproc);
+	if(insert_process_into_process_table(newproc) == -1){
+		sem_destroy(newproc->proc_sem);
+		proc_destroy(newproc);
+		return NULL;
+	}
 
 
 	/* VM fields */
