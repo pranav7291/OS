@@ -111,7 +111,7 @@ proc_destroy(struct proc *proc)
 	 * hang around beyond process exit. Some wait/exit designs
 	 * do, some don't.
 	 */
-
+	sem_destroy(proc->proc_sem);
 	//adding filedesc close
 	for (int i = 0; i < OPEN_MAX; i++) {
 		if (proc->proc_filedesc[i] != NULL) {
@@ -126,7 +126,7 @@ proc_destroy(struct proc *proc)
 				kfree(proc->proc_filedesc[i]);
 				proc->proc_filedesc[i] = NULL;
 			}
-			proc->proc_filedesc[i] = NULL;
+//			proc->proc_filedesc[i] = NULL;
 		}
 	}
 
@@ -134,9 +134,9 @@ proc_destroy(struct proc *proc)
 //	struct thread *cur;
 //
 //	cur = curthread;
-//
-//	proc_remthread(cur);
-//	KASSERT(cur->t_proc == NULL);
+//	if (proc->p_numthreads != 0) {
+//		proc_remthread(cur);
+//	}
 
 
 	KASSERT(proc != NULL);
@@ -250,7 +250,6 @@ proc_create_runprogram(const char *name) {
 	}
 
 	if(insert_process_into_process_table(newproc) == -1){
-		sem_destroy(newproc->proc_sem);
 		proc_destroy(newproc);
 		return NULL;
 	}

@@ -50,11 +50,6 @@ as_create(void)
 		return NULL;
 	}
 
-//	as->pte =  kmalloc(sizeof(struct PTE *) * 1024);
-//	if(as->pte==NULL) {
-//		kfree(as);
-//		return NULL;
-//	}
 	as->pte = NULL;
 	as->region = NULL;
 	as->stack_ptr = USERSTACK;// - (MYVM_STACKPAGES * PAGE_SIZE);
@@ -71,7 +66,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 
 	new_as = as_create();
 	if (new_as==NULL) {
-//		as_destroy(new_as);
 		return ENOMEM;
 	}
 
@@ -83,7 +77,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		if (new_as->region == NULL) {
 			new_as->region = (struct region *) kmalloc(sizeof(struct region));
 			if (new_as->region == NULL) {
-//				as_destroy(new_as);
 				return ENOMEM;
 			}
 			new_as->region->next = NULL;
@@ -92,7 +85,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			for (temp = new_as->region; temp->next != NULL; temp = temp->next);
 			newreg = (struct region *) kmalloc(sizeof(struct region));
 			if(newreg==NULL) {
-//				as_destroy(new_as);
 				return ENOMEM;
 			}
 			temp->next = newreg;
@@ -106,38 +98,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		old_region = old_region->next;
 	}
 
-	//copy PTEs
-//	struct PTE **oldpte = old_addrspace->pte;
-//	struct PTE **newpte = new_as->pte;
-//	for (int i = 0; i < 1024; i++) {
-//		if (oldpte[i] != NULL) {
-////			spinlock_acquire(oldpte[i]->ptelock);
-//			newpte[i] = kmalloc(sizeof(struct PTE) * 1024); //second level kmalloc
-//			if (newpte[i] == NULL) {
-////				spinlock_release(oldpte[i]->ptelock);
-//				as_destroy(new_as);
-//				return ENOMEM;
-//			}
-//			for (int j = 0; j < 1024; j++) {
-//				if (oldpte[i][j].ppn != 0) {
-//					if (newpte[i] == NULL) {
-//						as_destroy(new_as);
-//						return ENOMEM;
-//					}
-////					spinlock_init(newpte[i][j].ptelock);
-//					newpte[i][j].vpn = oldpte[i][j].vpn;
-//					newpte[i][j].ppn = page_alloc();
-//					memmove((void *) PADDR_TO_KVADDR(newpte[i][j].ppn), (const void *) PADDR_TO_KVADDR(oldpte[i][j].ppn), PAGE_SIZE);
-//					newpte[i][j].permission = oldpte[i][j].permission;
-//					newpte[i][j].referenced = oldpte[i][j].referenced;
-//					newpte[i][j].state = oldpte[i][j].state;
-//					newpte[i][j].valid = oldpte[i][j].valid;
-//				}
-//			}
-////		spinlock_release(oldpte[i]->ptelock);
-//		}
-//	}
-
 	struct PTE *old_pte_itr = old_addrspace->pte;
 	struct PTE *temp1, *new_pte;
 
@@ -145,7 +105,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		if (new_as->pte == NULL) {
 			new_as->pte = (struct PTE *) kmalloc(sizeof(struct PTE));
 			if (new_as->pte == NULL) {
-//				as_destroy(new_as);
 				return ENOMEM;
 			}
 			new_as->pte->next = NULL;
@@ -154,7 +113,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			for (temp1 = new_as->pte; temp1->next != NULL; temp1 = temp1->next);
 			new_pte = (struct PTE *) kmalloc(sizeof(struct PTE));
 			if(new_pte==NULL) {
-//				as_destroy(new_as);
 				return ENOMEM;
 			}
 			temp1->next = new_pte;
@@ -162,7 +120,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		new_pte->vpn = old_pte_itr->vpn;
 		new_pte->ppn = page_alloc();
 		if(new_pte->ppn == (vaddr_t)0){
-//			as_destroy(new_as);
 			return ENOMEM;
 		}
 		memmove((void *) PADDR_TO_KVADDR(new_pte->ppn), (const void *) PADDR_TO_KVADDR(old_pte_itr->ppn), PAGE_SIZE);
@@ -196,26 +153,6 @@ as_destroy(struct addrspace *as) {
 			reg = reg->next;
 			kfree(temp1);
 		}
-		int i = sizeof(struct addrspace);
-		i = sizeof(struct region);
-		i = sizeof(struct PTE);
-		(void)i;
-//		kfree(as->region);
-//
-//		struct PTE **pte = as->pte;
-//		for (int i = 0; i < 1024; i++) {
-//			if (pte[i] != NULL) {
-//				//				vm_tlbshootdown_all();
-//				for (int j = 0; j < 1024; j++) {
-//					if (pte[i][j].ppn != 0) {
-//						page_free(pte[i][j].ppn);// & PAGE_FRAME);
-//					}
-//				}
-//				//				spinlock_cleanup(pte[i]->ptelock);
-//				//				page_free(pte[i][j]->ppn & PAGE_FRAME);
-//				kfree(pte[i]);	//kfree second level
-//			}
-//		}
 
 		struct PTE *pte_itr = as->pte;
 		struct PTE *temp2;
@@ -225,8 +162,6 @@ as_destroy(struct addrspace *as) {
 			pte_itr = pte_itr->next;
 			kfree(temp2);
 		}
-		//		kfree(as->pte);
-		//		kfree(pte);	//kfree first level
 		kfree(as);
 	}
 }
@@ -289,7 +224,6 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	if(as->region == NULL){
 		as->region = (struct region *) kmalloc(sizeof(struct region));
 		if (as->region == NULL) {
-//			as_destroy(as);
 			return ENOMEM;
 		}
 		as->region->next = NULL;
@@ -300,7 +234,6 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 			;
 		reg_end->next = (struct region *) kmalloc(sizeof(struct region));
 		if (reg_end->next == NULL) {
-//			as_destroy(as);
 			return ENOMEM;
 		}
 		reg_end = reg_end->next;
@@ -311,8 +244,6 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	reg_end->base_vaddr = vaddr;
 	as->heap_bottom = (vaddr + (PAGE_SIZE * num_pages));//&PAGE_FRAME;
 	as->heap_top = as->heap_bottom;
-
-	//todo do I create heap and stack here???
 
 	return 0;
 }
@@ -352,17 +283,3 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	as->stack_ptr = USERSTACK;// - (MYVM_STACKPAGES * PAGE_SIZE);
 	return 0;
 }
-
-//void free_as(struct addrspace *as) {
-//	if (as == NULL) {
-//		return;
-//	}
-//	struct region *reg = as->region;
-//	struct region *temp1;
-//	while (reg != NULL) {
-//		temp1 = reg;
-//		reg = reg->next;
-//		kfree(temp1);
-//	}
-//
-//}

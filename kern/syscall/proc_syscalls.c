@@ -201,14 +201,14 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 				sizeof(int));
 
 		if (result) {
-			sem_destroy(pt_proc[pid]->proc_sem);
+//			sem_destroy(pt_proc[pid]->proc_sem);
 			proc_destroy(pt_proc[pid]);
 			pt_proc[pid] = NULL;
 			return result;
 		}
 	}
 
-	sem_destroy(pt_proc[pid]->proc_sem);
+//	sem_destroy(pt_proc[pid]->proc_sem);
 	proc_destroy(pt_proc[pid]);
 	pt_proc[pid] = NULL;
 	//kprintf("\ndestroyed pid %d", pid);
@@ -363,7 +363,9 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	}
 
 	/* We should be a new process. */
-//	KASSERT(proc_getas() == NULL);
+	as_destroy(curproc->p_addrspace);
+	curproc->p_addrspace = NULL;
+	KASSERT(proc_getas() == NULL);
 
 	/* Create a new address space. */
 	curproc->p_addrspace = as_create();
@@ -479,6 +481,8 @@ int sys_execv(const char *program, char **uargs, int *retval){
 
 int sys_exit(int code) {
 	//kprintf("exiting pid %d", curproc->pid);
+	struct proc * proc = curproc;
+	(void)proc;
 	curproc->isexited = true;
 	if (code == 0){
 		curproc->exitcode=_MKWAIT_EXIT(code);
@@ -486,17 +490,9 @@ int sys_exit(int code) {
 	else {
 		curproc->exitcode=_MKWAIT_SIG(code);
 	}
-//	for (int i = 0; i < OPEN_MAX; i++) {
-//		if (curproc->proc_filedesc[i] != NULL) {
-//			int retval;
-//			sys_close(i, &retval);
-//		}
-//	}
 	V(curproc->proc_sem);
 
 	thread_exit();
-	pid_t pid = curproc->pid;
-	pt_proc[pid] = NULL;
 
 	return 0;
 }
