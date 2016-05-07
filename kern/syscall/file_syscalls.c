@@ -252,10 +252,10 @@ int sys_close(int fd, ssize_t *retval) {
 	} else {
 //		if (curproc->proc_filedesc[fd] != NULL) {
 			int refcount;
-//			lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
+			lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 			curproc->proc_filedesc[fd]->fd_refcount--;
+			lock_release(curproc->proc_filedesc[fd]->fd_lock);
 			refcount = curproc->proc_filedesc[fd]->fd_refcount;
-//			lock_release(curproc->proc_filedesc[fd]->fd_lock);
 
 			if (refcount == 0) {
 				vfs_close(curproc->proc_filedesc[fd]->fd_vnode);
@@ -353,10 +353,12 @@ int sys_dup2(int oldfd, int newfd, ssize_t *retval){
 	}
 
 	lock_acquire(curproc->proc_filedesc[oldfd]->fd_lock);
-	if(curproc->proc_filedesc[newfd] != NULL){
-		result = sys_close(newfd,retval);
-		if (result)
+	if (curproc->proc_filedesc[newfd] != NULL) {
+		result = sys_close(newfd, retval);
+		if (result) {
+			lock_release(curproc->proc_filedesc[oldfd]->fd_lock);
 			return EBADF;
+		}
 	}
 
 //	lock_acquire(curproc->proc_filedesc[oldfd]->fd_lock);
