@@ -116,10 +116,12 @@ proc_destroy(struct proc *proc)
 	for (int i = 0; i < OPEN_MAX; i++) {
 		if (proc->proc_filedesc[i] != NULL) {
 			int refcount;
+			lock_acquire(proc->proc_filedesc[i]->fd_lock);
 			proc->proc_filedesc[i]->fd_refcount--;
+			lock_release(proc->proc_filedesc[i]->fd_lock);
 			refcount = proc->proc_filedesc[i]->fd_refcount;
 
-			if (refcount == 0) {
+			if ((refcount <= 0)&& (i > 2)) {
 				vfs_close(proc->proc_filedesc[i]->fd_vnode);
 				lock_destroy(proc->proc_filedesc[i]->fd_lock);
 				kfree(proc->proc_filedesc[i]->name);
@@ -245,12 +247,12 @@ proc_create_runprogram(const char *name) {
 	}
 	newproc->proc_sem = sem_create(name, 0);
 	if(newproc->proc_sem == NULL){
-		proc_destroy(newproc);
+//		proc_destroy(newproc);
 		return NULL;
 	}
 
 	if(insert_process_into_process_table(newproc) == -1){
-		proc_destroy(newproc);
+//		proc_destroy(newproc);
 		return NULL;
 	}
 

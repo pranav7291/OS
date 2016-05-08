@@ -257,7 +257,7 @@ int sys_close(int fd, ssize_t *retval) {
 			lock_release(curproc->proc_filedesc[fd]->fd_lock);
 			refcount = curproc->proc_filedesc[fd]->fd_refcount;
 
-			if (refcount == 0) {
+			if ((refcount == 0) && (fd > 2)) {
 				vfs_close(curproc->proc_filedesc[fd]->fd_vnode);
 				lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
 				kfree(curproc->proc_filedesc[fd]->name);
@@ -374,8 +374,8 @@ int sys_dup2(int oldfd, int newfd, ssize_t *retval){
 //	curproc->proc_filedesc[newhandle]->name=kstrdup(curproc->proc_filedesc[filehandle]->name);
 //	curproc->proc_filedesc[newhandle]->fd_refcount = curproc->proc_filedesc[filehandle]->fd_refcount;
 
+	curproc->proc_filedesc[oldfd]->fd_refcount++;
 	curproc->proc_filedesc[newfd] = curproc->proc_filedesc[oldfd];
-	curproc->proc_filedesc[newfd]->fd_refcount++;
 
 	lock_release(curproc->proc_filedesc[oldfd]->fd_lock);
 
