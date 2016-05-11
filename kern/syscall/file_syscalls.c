@@ -63,12 +63,27 @@ int sys_open(char *filename, int flags, int32_t *retval) {
 		return result;
 	}
 
+//	int fd_index;
+//	char *fd_name;
+//	fd_name = kstrdup("con:");
+//	if(name == fd_name){
+//		if(flags == O_RDONLY){
+//			fd_index = 0;
+//		}else if(flags == O_WRONLY){
+//			fd_index = 1;
+//		}
+//		lock_acquire(curproc->proc_filedesc[fd_index]->fd_lock);
+//		curproc->proc_filedesc[fd_index]->fd_refcount++;
+//		lock_release(curproc->proc_filedesc[fd_index]->fd_lock);
+//	}
+
 	struct vnode *ret; //empty nvnode
 	int returner = vfs_open(name, flags, mode, &ret);
 
+
 //	//printf("the returner of vfs_open is %d", returner);
 
-	if (returner==0) {
+	if ((returner==0)){// && (name != fd_name)) {
 //		//printf("successfully opened file %s\n", name);
 		//first add the default fd's (0,1,2) to the file table because the kernel shouldn't have to open these
 		//add an fd to the list of fds in the thread's fd table
@@ -250,21 +265,21 @@ int sys_close(int fd, ssize_t *retval) {
 	} else if (curproc->proc_filedesc[fd] == NULL) {
 		return EBADF;
 	} else {
-//		if (curproc->proc_filedesc[fd] != NULL) {
+		if ((curproc->proc_filedesc[fd] != NULL) && (fd > 2)) {
 			int refcount;
 			lock_acquire(curproc->proc_filedesc[fd]->fd_lock);
 			curproc->proc_filedesc[fd]->fd_refcount--;
 			lock_release(curproc->proc_filedesc[fd]->fd_lock);
 			refcount = curproc->proc_filedesc[fd]->fd_refcount;
 
-			if ((refcount == 0) && (fd > 2)) {
+			if (refcount == 0) {
 				vfs_close(curproc->proc_filedesc[fd]->fd_vnode);
 				lock_destroy(curproc->proc_filedesc[fd]->fd_lock);
 				kfree(curproc->proc_filedesc[fd]->name);
 				kfree(curproc->proc_filedesc[fd]);
 				curproc->proc_filedesc[fd] = NULL;
 			}
-//		}
+		}
 		*retval = 0;
 		return 0;
 	}

@@ -121,7 +121,7 @@ proc_destroy(struct proc *proc)
 			lock_release(proc->proc_filedesc[i]->fd_lock);
 			refcount = proc->proc_filedesc[i]->fd_refcount;
 
-			if ((refcount <= 0)&& (i > 2)) {
+			if (refcount == 0) {
 				vfs_close(proc->proc_filedesc[i]->fd_vnode);
 				lock_destroy(proc->proc_filedesc[i]->fd_lock);
 				kfree(proc->proc_filedesc[i]->name);

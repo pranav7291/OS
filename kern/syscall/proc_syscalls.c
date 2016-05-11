@@ -367,6 +367,14 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	curproc->p_addrspace = NULL;
 	KASSERT(proc_getas() == NULL);
 
+//	for (int k = 0; k < OPEN_MAX; k++) {
+//		if (curproc->proc_filedesc[k]!=NULL) {
+//			lock_acquire(curproc->proc_filedesc[k]->fd_lock);
+//			curproc->proc_filedesc[k]->fd_refcount++;
+//			lock_release(curproc->proc_filedesc[k]->fd_lock);
+//		}
+//	}
+
 	/* Create a new address space. */
 	curproc->p_addrspace = as_create();
 	if (curproc->p_addrspace == NULL) {
