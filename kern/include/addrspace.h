@@ -40,6 +40,9 @@
 #include <spl.h>
 #include "opt-dumbvm.h"
 
+#define MEM 0
+#define DISK 1
+
 struct vnode;
 
 
@@ -60,9 +63,10 @@ struct PTE{
 	vaddr_t vpn;
 	paddr_t ppn;
 	int permission;	//3 bits, how? R,W,E
-	bool state;		//Is the pp located in memory or disk
+	bool state;		//Is the pp located in memory or disk; MEM - in memory; DISK - in disk
 	bool valid;		//has a physical page been allocated for this virtual page or not
 	bool referenced;	//has the page been read or written to recently
+	unsigned disk_pos;
 //	struct spinlock *ptelock;
 	struct PTE *next;
 };

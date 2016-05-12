@@ -127,6 +127,7 @@ boot(void)
 
 	/* Late phase of initialization. */
 //	vm_bootstrap();
+	swapdisk_init();
 	kprintf_bootstrap();
 	thread_start_cpus();
 	test161_bootstrap();

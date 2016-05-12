@@ -47,7 +47,7 @@
 
 #define MYVM_STACKPAGES 1024
 
-
+#define SWAPDISK_SIZE 8192
 
 #define FREE 1
 #define DIRTY 2
@@ -59,7 +59,7 @@ struct spinlock tlb_spinlock;
 paddr_t first;
 paddr_t last;
 unsigned first_free_addr;
-unsigned noOfPages;
+unsigned num_pages;
 unsigned usedBytes;
 
 //char *helper1[1000];
@@ -69,12 +69,15 @@ unsigned usedBytes;
 
 int coremap_size;
 int no_of_coremap_entries;
+size_t num_swappages;
 
 //added by sammokka
 struct coremap_entry {
-	vaddr_t addr;
-	size_t size ;
+	vaddr_t vaddr;
+	size_t size;
 	int state; //0 for clean, 1 for dirty, 2 for free
+	bool busy;
+	struct addrspace *owner_as;
 };
 
 /* Initialization function */
@@ -101,5 +104,9 @@ unsigned int coremap_used_bytes(void);
 void vm_tlbshootdown_all(void);
 void vm_tlbshootdown(const struct tlbshootdown *);
 void vm_tlbshootdownvaddr(vaddr_t vaddr);
+void swapdisk_init(void);
+int evict(void);
+void swapout(vaddr_t vaddr, paddr_t paddr);
+void swapin(vaddr_t vaddr, paddr_t paddr);
 
 #endif /* _VM_H_ */
