@@ -38,6 +38,11 @@
 #include <addrspace.h>
 #include <vm.h>
 #include <spl.h>
+#include <kern/stat.h>
+#include <vnode.h>
+#include<vfs.h>
+#include <bitmap.h>
+#include<uio.h>
 
 struct coremap_entry* coremap;
 struct bitmap *swapdisk_bitmap;
@@ -93,7 +98,7 @@ vaddr_t alloc_kpages(unsigned npages) {
 //check for a free space
 	for (unsigned i = first_free_addr; i < num_pages; i++) {
 		int flag = 1;
-		if (coremap[i].state == FREE && ((i + npages) < noOfPages)) {
+		if (coremap[i].state == FREE && ((i + npages) < num_pages)) {
 			//free space found. Check if next nPages are also free
 			for (unsigned j = 0; j < npages; j++) {
 				if (coremap[i + j].state == FREE) { ///1 is free
@@ -204,7 +209,7 @@ void page_free(paddr_t paddr) {
 
 	coremap[i].state = FREE;
 	coremap[i].size = 1;
-	coremap[j].busy = 0;
+	coremap[i].busy = 0;
 
 	usedBytes = usedBytes - PAGE_SIZE;
 	spinlock_release(&coremap_spinlock);
@@ -276,7 +281,7 @@ int evict(){
 
 	spinlock_acquire(&coremap_spinlock);
 	coremap[victim].state = CLEAN;
-	coremap[victim].vaddr = NULL;
+	coremap[victim].vaddr = 0;
 	spinlock_release(&coremap_spinlock);
 	return victim;
 }
