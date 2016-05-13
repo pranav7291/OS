@@ -62,6 +62,7 @@ unsigned first_free_addr;
 unsigned num_pages;
 unsigned usedBytes;
 bool swapping;
+unsigned swapdisk_index;	//to store current index of swapdisk ptr
 
 //char *helper1[1000];
 //char *helper2[2000];
@@ -107,7 +108,7 @@ void vm_tlbshootdown(const struct tlbshootdown *);
 void vm_tlbshootdownvaddr(vaddr_t vaddr);
 void swapdisk_init(void);
 int evict(void);
-void swapout(vaddr_t vaddr, paddr_t paddr);
-void swapin(vaddr_t vaddr, paddr_t paddr);
+void swapout(vaddr_t swapaddr, paddr_t paddr);
+void swapin(vaddr_t swapaddr, paddr_t paddr);
 
 #endif /* _VM_H_ */

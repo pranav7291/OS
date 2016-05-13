@@ -236,7 +236,7 @@ void swapdisk_init(void){
 	char *swapdisk = kstrdup("lhd0raw:");
 	int result;
 	swapping = true;
-
+	swapdisk_index = 0;	//stores the swapdisk ptr index
 	result = vfs_open(swapdisk, O_RDWR, 0, &swapdisk_vnode);
 	if (result) {
 		swapping = false;
@@ -250,26 +250,26 @@ void swapdisk_init(void){
 	}
 }
 
-void swapout(vaddr_t vaddr, paddr_t paddr){
+void swapout(vaddr_t swapaddr, paddr_t paddr){
 	int result;
 	struct iovec iov;
 	struct uio ku;
 	vaddr_t kva=PADDR_TO_KVADDR(paddr);
-
-	uio_kinit(&iov, &ku, (char *)kva, PAGE_SIZE, vaddr, UIO_WRITE);
+	enum uio_rw mode = UIO_WRITE;
+	uio_kinit(&iov, &ku, (char *)kva, PAGE_SIZE, swapaddr, mode);
 	result=VOP_WRITE(swapdisk_vnode, &ku);
 	if (result) {
 		panic("\nSwapout error:%d", result);
 	}
 }
 
-void swapin(vaddr_t vaddr, paddr_t paddr){
+void swapin(vaddr_t swapaddr, paddr_t paddr){
 	int result;
 	struct iovec iov;
 	struct uio ku;
 	vaddr_t kva=PADDR_TO_KVADDR(paddr);
-
-	uio_kinit(&iov, &ku, (char *)kva, PAGE_SIZE, vaddr, UIO_READ);
+	enum uio_rw mode = UIO_READ;
+	uio_kinit(&iov, &ku, (char *)kva, PAGE_SIZE, swapaddr, mode);
 	result=VOP_READ(swapdisk_vnode, &ku);
 	if (result) {
 		panic("\nSwapin error:%d", result);
@@ -289,17 +289,18 @@ int evict(){
 	if(flag == 0){
 		return -1;
 	}
-	paddr_t paddr = (PAGE_SIZE * victim) + first_free_addr;
+	paddr_t paddr = PAGE_SIZE * victim;
 	//todo shoot down from the TLB. Check this
-//	vm_tlbshootdownvaddr(coremap[victim].vaddr);
+	vm_tlbshootdownvaddr(coremap[victim].pte_ptr->vpn);
 	if (coremap[victim].state == DIRTY){
 		//todo set the VA for all pages
-		swapout(coremap[victim].vaddr, paddr);
+		swapout(coremap[victim].pte_ptr->swapdisk_pos, paddr);
 	}
 
 	spinlock_acquire(&coremap_spinlock);
 	coremap[victim].state = CLEAN;
 	coremap[victim].vaddr = 0;
+	coremap[victim].pte_ptr->state = DISK;
 	spinlock_release(&coremap_spinlock);
 	return victim;
 }
@@ -404,7 +405,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			return ENOMEM;
 		}
 		as->pte->vpn = faultaddress & PAGE_FRAME;
+		as->pte->state = MEM;
 		as->pte->next = NULL;
+		swapdisk_index++;
+		as->pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
 		curr = as->pte;
 	} else {
 		//if the first pte is the required pte
@@ -426,7 +430,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			return ENOMEM;
 		}
 		curr->vpn = faultaddress & PAGE_FRAME;
+		curr->state = MEM;
 		curr->next = NULL;
+		swapdisk_index++;
+		curr->swapdisk_pos = swapdisk_index * PAGE_SIZE;
 		for (last = as->pte; last->next != NULL; last = last->next);
 		last->next = curr;
 	}
@@ -434,7 +441,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
 		//random write
 		if((curr->state == DISK) && (swapping == true)){
-			swapin(curr->vpn, curr->ppn);
+			swapin(curr->swapdisk_pos, curr->ppn);
 			curr->state = MEM;
 		}
 		spinlock_acquire(&tlb_spinlock);
