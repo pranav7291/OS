@@ -433,7 +433,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
 		//random write
-		if(curr->state == DISK){
+		if((curr->state == DISK) && (swapping == true)){
 			swapin(curr->vpn, curr->ppn);
 			curr->state = MEM;
 		}
