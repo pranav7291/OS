@@ -40,9 +40,9 @@
 #include <spl.h>
 #include <kern/stat.h>
 #include <vnode.h>
-#include<vfs.h>
+#include <vfs.h>
 #include <bitmap.h>
-#include<uio.h>
+#include <uio.h>
 
 struct coremap_entry* coremap;
 struct bitmap *swapdisk_bitmap;
@@ -128,22 +128,28 @@ vaddr_t alloc_kpages(unsigned npages) {
 		}
 	}
 	//todo no page found. write logic for swapout
-	page_ind = evict();
-	coremap[page_ind].state = FIXED;
-	coremap[page_ind].busy = 0;
-	coremap[page_ind].size = npages;
-	for (unsigned j = 1; j < npages; j++) {
-		coremap[page_ind + j].state = FIXED;
-		coremap[page_ind + j].busy = 0;
-		coremap[page_ind + j].size = 1;
+	if (swapping) {
+		page_ind = evict();
+		coremap[page_ind].state = FIXED;
+		coremap[page_ind].busy = 0;
+		coremap[page_ind].size = npages;
+		for (unsigned j = 1; j < npages; j++) {
+			coremap[page_ind + j].state = FIXED;
+			coremap[page_ind + j].busy = 0;
+			coremap[page_ind + j].size = 1;
+		}
+		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE),
+				PAGE_SIZE * npages);
+		usedBytes = usedBytes + PAGE_SIZE * npages;
+
+		spinlock_release(&coremap_spinlock);
+
+		returner = PADDR_TO_KVADDR(PAGE_SIZE * page_ind);
+		return returner;
+	} else {
+		spinlock_release(&coremap_spinlock);
+		return 0;
 	}
-	bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE), PAGE_SIZE * npages);
-	usedBytes = usedBytes + PAGE_SIZE * npages;
-
-	spinlock_release(&coremap_spinlock);
-
-	returner = PADDR_TO_KVADDR(PAGE_SIZE * page_ind);
-	return returner;
 }
 
 void free_kpages(vaddr_t addr) {
@@ -172,32 +178,37 @@ paddr_t page_alloc() {
 	int page_ind;
 	spinlock_acquire(&coremap_spinlock);
 
-	for (unsigned i = first_free_addr; i < num_pages; i++){
-		if (coremap[i].state == FREE && coremap[i].busy == 0){
+	for (unsigned i = first_free_addr; i < num_pages; i++) {
+		if (coremap[i].state == FREE && coremap[i].busy == 0) {
 			coremap[i].state = DIRTY;
 			coremap[i].size = 1;
 			coremap[i].busy = 1;
 
-			bzero((void *)PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE );
+			bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE);
 
 			usedBytes = usedBytes + PAGE_SIZE;
 			spinlock_release(&coremap_spinlock);
-			paddr_t returner = PAGE_SIZE*i;
+			paddr_t returner = PAGE_SIZE * i;
 			return returner;
 		}
 	}
 	//todo no page found. write logic for swapout
-	page_ind = evict();
-	coremap[page_ind].state = DIRTY;
-	coremap[page_ind].size = 1;
-	coremap[page_ind].busy = 1;
+	if (swapping) {
+		page_ind = evict();
+		coremap[page_ind].state = DIRTY;
+		coremap[page_ind].size = 1;
+		coremap[page_ind].busy = 1;
 
-	bzero((void *)PADDR_TO_KVADDR(page_ind * PAGE_SIZE), PAGE_SIZE );
+		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE), PAGE_SIZE);
 
-	usedBytes = usedBytes + PAGE_SIZE;
-	spinlock_release(&coremap_spinlock);
-	paddr_t returner = PAGE_SIZE * page_ind;
-	return returner;
+		usedBytes = usedBytes + PAGE_SIZE;
+		spinlock_release(&coremap_spinlock);
+		paddr_t returner = PAGE_SIZE * page_ind;
+		return returner;
+	} else {
+		spinlock_release(&coremap_spinlock);
+		return 0;
+	}
 }
 
 void page_free(paddr_t paddr) {
@@ -218,18 +229,21 @@ void page_free(paddr_t paddr) {
 
 void swapdisk_init(void){
 	struct stat swapdisk_stat;
-	char *swapdisk = kstrdup("lhd0raw");
+	char *swapdisk = kstrdup("lhd0raw:");
 	int result;
+	swapping = false;
 
 	result = vfs_open(swapdisk, O_RDWR, 0, &swapdisk_vnode);
-	if (result){
-		panic("\nSwapdisk open error:%d",result);
+	if (result) {
+		swapping = true;
 	}
-	VOP_STAT(swapdisk_vnode, &swapdisk_stat);
-	num_swappages = swapdisk_stat.st_size / PAGE_SIZE;
-	//todo swap lock init here
-	swapdisk_bitmap = bitmap_create(SWAPDISK_SIZE);
-	KASSERT(swapdisk_bitmap != NULL);
+	if (swapping) {
+		VOP_STAT(swapdisk_vnode, &swapdisk_stat);
+		num_swappages = swapdisk_stat.st_size / PAGE_SIZE;
+		//todo swap lock init here
+		swapdisk_bitmap = bitmap_create(SWAPDISK_SIZE);
+		KASSERT(swapdisk_bitmap != NULL);
+	}
 }
 
 void swapout(vaddr_t vaddr, paddr_t paddr){

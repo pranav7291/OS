@@ -61,6 +61,7 @@ paddr_t last;
 unsigned first_free_addr;
 unsigned num_pages;
 unsigned usedBytes;
+bool swapping;
 
 //char *helper1[1000];
 //char *helper2[2000];
