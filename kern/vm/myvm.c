@@ -235,7 +235,7 @@ void swapdisk_init(void){
 	struct stat swapdisk_stat;
 	char *swapdisk = kstrdup("lhd0raw:");
 	int result;
-	swapping = false;
+	swapping = true;
 
 	result = vfs_open(swapdisk, O_RDWR, 0, &swapdisk_vnode);
 	if (result) {
