@@ -78,7 +78,7 @@ struct coremap_entry {
 	size_t size;
 	int state; //0 for clean, 1 for dirty, 2 for free
 	bool busy;
-	struct addrspace *owner_as;
+	struct PTE *pte_ptr;
 };
 
 /* Initialization function */
@@ -91,7 +91,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress);
 vaddr_t alloc_kpages(unsigned npages);
 void free_kpages(vaddr_t addr);
 
-paddr_t page_alloc(void);
+paddr_t page_alloc(struct PTE *pte);
 void page_free(paddr_t paddr);
 
 /*

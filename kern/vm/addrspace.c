@@ -118,7 +118,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			temp1->next = new_pte;
 		}
 		new_pte->vpn = old_pte_itr->vpn;
-		new_pte->ppn = page_alloc();
+		new_pte->ppn = page_alloc(new_pte);
 		if(new_pte->ppn == (vaddr_t)0){
 			return ENOMEM;
 		}

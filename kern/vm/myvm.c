@@ -74,14 +74,14 @@ void vm_bootstrap(void) {
 		coremap[i].state = FIXED;
 		coremap[i].size = 1;
 		coremap[i].vaddr = PADDR_TO_KVADDR(i); //have to store the virtual address here
-		coremap[i].owner_as = 0;
+		coremap[i].pte_ptr = 0;
 		coremap[i].busy = 1;
 	}
 	for (unsigned i = first_free_addr; i < num_pages; i++) {
 		coremap[i].state = FREE;
 		coremap[i].size = 1;
 		coremap[i].vaddr = PADDR_TO_KVADDR(i); //have to store the virtual address here
-		coremap[i].owner_as = 0;
+		coremap[i].pte_ptr = 0;
 		coremap[i].busy = 0;
 	}
 	spinlock_init(&coremap_spinlock);
@@ -118,6 +118,7 @@ vaddr_t alloc_kpages(unsigned npages) {
 				coremap[i + j].state = FIXED;
 				coremap[i + j].busy = 0;
 				coremap[i + j].size = 1;
+				coremap[i + j].pte_ptr = NULL;
 			}
 			bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE * npages);
 
@@ -137,6 +138,7 @@ vaddr_t alloc_kpages(unsigned npages) {
 			coremap[page_ind + j].state = FIXED;
 			coremap[page_ind + j].busy = 0;
 			coremap[page_ind + j].size = 1;
+			coremap[page_ind + j].pte_ptr = NULL;
 		}
 		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE),
 				PAGE_SIZE * npages);
@@ -174,7 +176,7 @@ void free_kpages(vaddr_t addr) {
 	return;
 }
 
-paddr_t page_alloc() {
+paddr_t page_alloc(struct PTE *pte) {
 	int page_ind;
 	spinlock_acquire(&coremap_spinlock);
 
@@ -183,6 +185,7 @@ paddr_t page_alloc() {
 			coremap[i].state = DIRTY;
 			coremap[i].size = 1;
 			coremap[i].busy = 1;
+			coremap[i].pte_ptr = pte;
 
 			bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE);
 
@@ -198,6 +201,7 @@ paddr_t page_alloc() {
 		coremap[page_ind].state = DIRTY;
 		coremap[page_ind].size = 1;
 		coremap[page_ind].busy = 1;
+		coremap[page_ind].pte_ptr = pte;
 
 		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE), PAGE_SIZE);
 
@@ -235,7 +239,7 @@ void swapdisk_init(void){
 
 	result = vfs_open(swapdisk, O_RDWR, 0, &swapdisk_vnode);
 	if (result) {
-		swapping = true;
+		swapping = false;
 	}
 	if (swapping) {
 		VOP_STAT(swapdisk_vnode, &swapdisk_stat);
@@ -394,7 +398,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		if(as->pte == NULL){
 			return ENOMEM;
 		}
-		as->pte->ppn = page_alloc();
+		as->pte->ppn = page_alloc(as->pte);
 		//todo write swapin somewhere here
 		if(as->pte->ppn == (vaddr_t)0){
 			return ENOMEM;
@@ -417,7 +421,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		if(curr == NULL){
 			return ENOMEM;
 		}
-		curr->ppn = page_alloc();
+		curr->ppn = page_alloc(curr);
 		if(curr->ppn == (vaddr_t)0){
 			return ENOMEM;
 		}
@@ -429,6 +433,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
 		//random write
+		if(curr->state == DISK){
+			swapin(curr->vpn, curr->ppn);
+			curr->state = MEM;
+		}
 		spinlock_acquire(&tlb_spinlock);
 		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
