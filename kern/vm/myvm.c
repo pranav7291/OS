@@ -289,9 +289,11 @@ int evict(){
 	if(flag == 0){
 		return -1;
 	}
+	KASSERT(coremap[victim].pte_ptr != NULL);
 	paddr_t paddr = PAGE_SIZE * victim;
 	//todo shoot down from the TLB. Check this
 	vm_tlbshootdownvaddr(coremap[victim].pte_ptr->vpn);
+	spinlock_release(&coremap_spinlock);
 	if (coremap[victim].state == DIRTY){
 		//todo set the VA for all pages
 		swapout(coremap[victim].pte_ptr->swapdisk_pos, paddr);
@@ -301,7 +303,6 @@ int evict(){
 	coremap[victim].state = CLEAN;
 	coremap[victim].vaddr = 0;
 	coremap[victim].pte_ptr->state = DISK;
-	spinlock_release(&coremap_spinlock);
 	return victim;
 }
 
