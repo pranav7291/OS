@@ -63,6 +63,7 @@ unsigned num_pages;
 unsigned usedBytes;
 bool swapping;
 unsigned swapdisk_index;	//to store current index of swapdisk ptr
+struct vnode *swapdisk_vnode;
 
 //char *helper1[1000];
 //char *helper2[2000];

@@ -531,14 +531,18 @@ int sys_sbrk(int amt, int *retval){
 				if (as->pte->vpn == i) {
 					curr = as->pte;
 					as->pte = as->pte->next;
-					page_free(curr->ppn);
+					if (curr->state == MEM) {
+						page_free(curr->ppn);
+					}
 					vm_tlbshootdownvaddr(curr->vpn);
 					kfree(curr);
 				} else {
 					prev = as->pte;
 					for (curr = as->pte->next; curr != NULL; curr =	curr->next) {
 						if (curr->vpn == i) {
-							page_free(curr->ppn);
+							if (curr->state == MEM) {
+								page_free(curr->ppn);
+							}
 							vm_tlbshootdownvaddr(curr->vpn);
 							prev->next = curr->next;
 							kfree(curr);

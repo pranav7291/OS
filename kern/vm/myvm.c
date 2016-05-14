@@ -46,7 +46,6 @@
 
 struct coremap_entry* coremap;
 struct bitmap *swapdisk_bitmap;
-struct vnode *swapdisk_vnode;
 
 void vm_bootstrap(void) {
 	last = ram_getsize();
@@ -144,7 +143,7 @@ vaddr_t alloc_kpages(unsigned npages) {
 		}
 		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE),
 				PAGE_SIZE * npages);
-		usedBytes = usedBytes + PAGE_SIZE * npages;
+//		usedBytes = usedBytes + PAGE_SIZE * npages;
 
 		spinlock_release(&coremap_spinlock);
 
@@ -169,6 +168,7 @@ void free_kpages(vaddr_t addr) {
 		coremap[j].state = FREE;
 		coremap[j].size = 1;
 		coremap[j].busy = 0;
+		coremap[j].pte_ptr = NULL;
 		index++;
 	}
 
@@ -207,7 +207,7 @@ paddr_t page_alloc(struct PTE *pte) {
 
 		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE), PAGE_SIZE);
 
-		usedBytes = usedBytes + PAGE_SIZE;
+//		usedBytes = usedBytes + PAGE_SIZE;
 		spinlock_release(&coremap_spinlock);
 		paddr_t returner = PAGE_SIZE * page_ind;
 		return returner;
@@ -227,6 +227,7 @@ void page_free(paddr_t paddr) {
 	coremap[i].state = FREE;
 	coremap[i].size = 1;
 	coremap[i].busy = 0;
+	coremap[i].pte_ptr = NULL;
 
 	usedBytes = usedBytes - PAGE_SIZE;
 	spinlock_release(&coremap_spinlock);

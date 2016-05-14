@@ -157,7 +157,9 @@ as_destroy(struct addrspace *as) {
 		struct PTE *pte_itr = as->pte;
 		struct PTE *temp2;
 		while (pte_itr != NULL) {
-			page_free(pte_itr->ppn);
+			if (pte_itr->state == MEM) {
+				page_free(pte_itr->ppn);
+			}
 			temp2 = pte_itr;
 			pte_itr = pte_itr->next;
 			kfree(temp2);
