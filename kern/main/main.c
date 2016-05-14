@@ -151,7 +151,9 @@ static
 void
 shutdown(void)
 {
-	vfs_close(swapdisk_vnode);
+	if (swapping) {
+		vfs_close(swapdisk_vnode);
+	}
 	kprintf("Shutting down.\n");
 
 	vfs_clearbootfs();
