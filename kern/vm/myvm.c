@@ -114,6 +114,7 @@ vaddr_t alloc_kpages(unsigned npages) {
 			coremap[i].state = FIXED;
 			coremap[i].busy = 0;
 			coremap[i].size = npages;
+			coremap[i].pte_ptr = NULL;
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[i + j].state = FIXED;
 				coremap[i + j].busy = 0;
@@ -129,11 +130,12 @@ vaddr_t alloc_kpages(unsigned npages) {
 		}
 	}
 	//todo no page found. write logic for swapout
-	if (swapping) {
+	if (swapping && npages <= 1) {
 		page_ind = evict();
 		coremap[page_ind].state = FIXED;
 		coremap[page_ind].busy = 0;
 		coremap[page_ind].size = npages;
+		coremap[page_ind].pte_ptr = NULL;
 		for (unsigned j = 1; j < npages; j++) {
 			coremap[page_ind + j].state = FIXED;
 			coremap[page_ind + j].busy = 0;
@@ -282,7 +284,7 @@ int evict(){
 	while (flag == 0) {
 		rand_num = random();
 		victim = rand_num % num_pages;
-		if ((coremap[victim].state == DIRTY || coremap[victim].state == CLEAN)) {
+		if ((coremap[victim].state == DIRTY)){// || coremap[victim].state == CLEAN)) {
 			flag = 1;
 		}
 	}
@@ -442,6 +444,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
 		//random write
 		if((curr->state == DISK) && (swapping == true)){
+			if (found == 1){
+				curr->ppn = page_alloc(curr);
+			}
 			swapin(curr->swapdisk_pos, curr->ppn);
 			curr->state = MEM;
 		}
