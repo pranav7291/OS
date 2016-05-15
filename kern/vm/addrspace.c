@@ -182,7 +182,10 @@ as_destroy(struct addrspace *as) {
 		struct PTE *pte_itr = as->pte;
 		struct PTE *temp2;
 		while (pte_itr != NULL) {
-			if (pte_itr->state == MEM) {
+			if (pte_itr->state == MEM && swapping) {
+				page_free(pte_itr->ppn);
+			}
+			else {
 				page_free(pte_itr->ppn);
 			}
 			temp2 = pte_itr;
