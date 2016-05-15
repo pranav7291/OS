@@ -63,11 +63,10 @@ as_create(void)
 int
 as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 {
+	if(swapping){
+		lock_acquire(paging_lock);
+	}
 	struct addrspace *new_as;
-//	if(swapping){
-//		lock_acquire(paging_lock);
-//	}
-
 	new_as = as_create();
 	if (new_as==NULL) {
 		return ENOMEM;
@@ -131,10 +130,16 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		new_pte->next = NULL;
 
 		if (swapping) {
+			KASSERT(old_pte_itr->state == MEM);
+			KASSERT(old_pte_itr->ppn != (paddr_t)0);
+			vm_tlbshootdownvaddr(old_pte_itr->vpn);
+//			lock_acquire(paging_lock);
 			swapout(new_pte->swapdisk_pos, old_pte_itr->ppn);
+//			lock_release(paging_lock);
+			new_pte->ppn = (paddr_t)0;
 		} else {
 			new_pte->ppn = page_alloc(new_pte);
-			if (new_pte->ppn == (vaddr_t) 0) {
+			if (new_pte->ppn == (paddr_t) 0) {
 				return ENOMEM;
 			}
 			memmove((void *) PADDR_TO_KVADDR(new_pte->ppn),
@@ -149,18 +154,19 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 	new_as->heap_top = old_addrspace->heap_top;
 	new_as->stack_ptr = old_addrspace->stack_ptr;
 
+	if(swapping){
+		lock_release(paging_lock);
+	}
+
 	*ret = new_as;
-//	if(swapping){
-//		lock_release(paging_lock);
-//	}
 	return 0;
 }
 
 void
 as_destroy(struct addrspace *as) {
-//	if(swapping){
-//		lock_acquire(paging_lock);
-//	}
+	if(swapping){
+		lock_acquire(paging_lock);
+	}
 
 	if (as != NULL) {
 		vm_tlbshootdown_all();
@@ -185,9 +191,9 @@ as_destroy(struct addrspace *as) {
 		}
 		kfree(as);
 	}
-//	if(swapping){
-//		lock_acquire(paging_lock);
-//	}
+	if(swapping){
+		lock_release(paging_lock);
+	}
 }
 
 void
