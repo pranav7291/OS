@@ -33,6 +33,7 @@
 #include <addrspace.h>
 #include <vm.h>
 #include <proc.h>
+#include <synch.h>
 
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
@@ -63,6 +64,9 @@ int
 as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 {
 	struct addrspace *new_as;
+//	if(swapping){
+//		lock_acquire(paging_lock);
+//	}
 
 	new_as = as_create();
 	if (new_as==NULL) {
@@ -118,16 +122,25 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			temp1->next = new_pte;
 		}
 		new_pte->vpn = old_pte_itr->vpn;
-		new_pte->ppn = page_alloc(new_pte);
-		if(new_pte->ppn == (vaddr_t)0){
-			return ENOMEM;
-		}
-		memmove((void *) PADDR_TO_KVADDR(new_pte->ppn), (const void *) PADDR_TO_KVADDR(old_pte_itr->ppn), PAGE_SIZE);
 		new_pte->permission = old_pte_itr->permission;
 		new_pte->referenced = old_pte_itr->referenced;
-		new_pte->state = old_pte_itr->state;
+		new_pte->state = DISK;
+		swapdisk_index++;
+		new_pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
 		new_pte->valid = old_pte_itr->valid;
 		new_pte->next = NULL;
+
+		if (swapping) {
+			swapout(new_pte->swapdisk_pos, old_pte_itr->ppn);
+		} else {
+			new_pte->ppn = page_alloc(new_pte);
+			if (new_pte->ppn == (vaddr_t) 0) {
+				return ENOMEM;
+			}
+			memmove((void *) PADDR_TO_KVADDR(new_pte->ppn),
+					(const void *) PADDR_TO_KVADDR(old_pte_itr->ppn),
+					PAGE_SIZE);
+		}
 
 		old_pte_itr = old_pte_itr->next;
 	}
@@ -137,11 +150,17 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 	new_as->stack_ptr = old_addrspace->stack_ptr;
 
 	*ret = new_as;
+//	if(swapping){
+//		lock_release(paging_lock);
+//	}
 	return 0;
 }
 
 void
 as_destroy(struct addrspace *as) {
+//	if(swapping){
+//		lock_acquire(paging_lock);
+//	}
 
 	if (as != NULL) {
 		vm_tlbshootdown_all();
@@ -166,6 +185,9 @@ as_destroy(struct addrspace *as) {
 		}
 		kfree(as);
 	}
+//	if(swapping){
+//		lock_acquire(paging_lock);
+//	}
 }
 
 void

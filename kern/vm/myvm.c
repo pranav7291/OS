@@ -43,6 +43,7 @@
 #include <vfs.h>
 #include <bitmap.h>
 #include <uio.h>
+#include <synch.h>
 
 struct coremap_entry* coremap;
 struct bitmap *swapdisk_bitmap;
@@ -91,7 +92,9 @@ void vm_bootstrap(void) {
 vaddr_t alloc_kpages(unsigned npages) {
 	int page_ind;
 	vaddr_t returner;
-
+	if(swapping){
+		lock_acquire(paging_lock);
+	}
 	spinlock_acquire(&coremap_spinlock);
 
 //check for a free space
@@ -125,6 +128,9 @@ vaddr_t alloc_kpages(unsigned npages) {
 			usedBytes = usedBytes + PAGE_SIZE * npages;
 			spinlock_release(&coremap_spinlock);
 			returner = PADDR_TO_KVADDR(PAGE_SIZE * i);
+			if(swapping){
+				lock_release(paging_lock);
+			}
 			return returner;
 		}
 	}
@@ -148,9 +154,15 @@ vaddr_t alloc_kpages(unsigned npages) {
 		spinlock_release(&coremap_spinlock);
 
 		returner = PADDR_TO_KVADDR(PAGE_SIZE * page_ind);
+		if(swapping){
+			lock_release(paging_lock);
+		}
 		return returner;
 	} else {
 		spinlock_release(&coremap_spinlock);
+		if(swapping){
+			lock_release(paging_lock);
+		}
 		return 0;
 	}
 }
@@ -180,6 +192,9 @@ void free_kpages(vaddr_t addr) {
 
 paddr_t page_alloc(struct PTE *pte) {
 	int page_ind;
+	if(swapping){
+		lock_acquire(paging_lock);
+	}
 	spinlock_acquire(&coremap_spinlock);
 
 	for (unsigned i = first_free_addr; i < num_pages; i++) {
@@ -194,6 +209,9 @@ paddr_t page_alloc(struct PTE *pte) {
 			usedBytes = usedBytes + PAGE_SIZE;
 			spinlock_release(&coremap_spinlock);
 			paddr_t returner = PAGE_SIZE * i;
+			if(swapping){
+				lock_release(paging_lock);
+			}
 			return returner;
 		}
 	}
@@ -210,9 +228,15 @@ paddr_t page_alloc(struct PTE *pte) {
 //		usedBytes = usedBytes + PAGE_SIZE;
 		spinlock_release(&coremap_spinlock);
 		paddr_t returner = PAGE_SIZE * page_ind;
+		if(swapping){
+			lock_release(paging_lock);
+		}
 		return returner;
 	} else {
 		spinlock_release(&coremap_spinlock);
+		if(swapping){
+			lock_release(paging_lock);
+		}
 		return 0;
 	}
 }
@@ -245,6 +269,7 @@ void swapdisk_init(void){
 		swapping = false;
 	}
 	if (swapping) {
+		paging_lock = lock_create("paging_lock");
 		VOP_STAT(swapdisk_vnode, &swapdisk_stat);
 		num_swappages = swapdisk_stat.st_size / PAGE_SIZE;
 		//todo swap lock init here
@@ -448,7 +473,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			if (found == 1){
 				curr->ppn = page_alloc(curr);
 			}
+			lock_acquire(paging_lock);
 			swapin(curr->swapdisk_pos, curr->ppn);
+			lock_release(paging_lock);
 			curr->state = MEM;
 		}
 		spinlock_acquire(&tlb_spinlock);

@@ -153,6 +153,7 @@ shutdown(void)
 {
 	if (swapping) {
 		vfs_close(swapdisk_vnode);
+		lock_destroy(paging_lock);
 	}
 	kprintf("Shutting down.\n");
 
