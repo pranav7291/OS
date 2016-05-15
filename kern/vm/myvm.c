@@ -321,6 +321,7 @@ int evict(){
 	paddr_t paddr = PAGE_SIZE * victim;
 	//todo shoot down from the TLB. Check this
 	vm_tlbshootdownvaddr(coremap[victim].pte_ptr->vpn);
+	vm_tlbshootdownvaddr_for_all_cpus(coremap[victim].pte_ptr->vpn);
 	spinlock_release(&coremap_spinlock);
 	if (coremap[victim].state == DIRTY){
 		//todo set the VA for all pages
@@ -350,19 +351,21 @@ void vm_tlbshootdown_all(void) {
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {
-	uint32_t lo, hi;
-	int tlb_ind;
-	spinlock_acquire(&tlb_spinlock);
-	tlb_ind = ts->tlb_indicator;
-	int x = splhigh();
-
-	tlb_read(&hi, &lo, tlb_ind);
-	int i = tlb_probe(hi,0);
-	if(i >= 0){
-		tlb_write(TLBHI_INVALID(tlb_ind),TLBLO_INVALID(),i);
-	}
-	splx(x);
-	spinlock_release(&tlb_spinlock);
+//	uint32_t lo, hi;
+//	int tlb_ind;
+//	tlb_ind = ts->tlb_indicator;
+	vm_tlbshootdownvaddr(ts->vaddr);
+//
+//
+//	int x = splhigh();
+//
+//	tlb_read(&hi, &lo, tlb_ind);
+//	int i = tlb_probe(hi,0);
+//	if(i >= 0){
+//		tlb_write(TLBHI_INVALID(tlb_ind),TLBLO_INVALID(),i);
+//	}
+//	splx(x);
+//	spinlock_release(&tlb_spinlock);
 }
 
 void vm_tlbshootdownvaddr(vaddr_t vaddr) {

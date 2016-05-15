@@ -1156,6 +1156,20 @@ ipi_broadcast(int code)
 	}
 }
 
+void vm_tlbshootdownvaddr_for_all_cpus(vaddr_t vaddr) {
+	struct tlbshootdown mapping;
+	unsigned i;
+	struct cpu *c;
+	mapping.vaddr = vaddr;
+	for (i=0; i < cpuarray_num(&allcpus); i++) {
+		c = cpuarray_get(&allcpus, i);
+		if (c != curcpu->c_self) {
+			ipi_tlbshootdown(c, &mapping);
+		}
+	}
+}
+
+
 void
 ipi_tlbshootdown(struct cpu *target, const struct tlbshootdown *mapping)
 {

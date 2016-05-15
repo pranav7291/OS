@@ -124,6 +124,7 @@ struct tlbshootdown {
 	 */
 //	int ts_placeholder;
 	int tlb_indicator;
+	vaddr_t vaddr;
 };
 
 #define TLBSHOOTDOWN_MAX 16
