@@ -531,7 +531,11 @@ int sys_sbrk(int amt, int *retval){
 				if (as->pte->vpn == i) {
 					curr = as->pte;
 					as->pte = as->pte->next;
-					if (curr->state == MEM) {
+					if (swapping) {
+						if (curr->state == MEM) {
+							page_free(curr->ppn);
+						}
+					} else {
 						page_free(curr->ppn);
 					}
 					vm_tlbshootdownvaddr(curr->vpn);
@@ -540,7 +544,11 @@ int sys_sbrk(int amt, int *retval){
 					prev = as->pte;
 					for (curr = as->pte->next; curr != NULL; curr =	curr->next) {
 						if (curr->vpn == i) {
-							if (curr->state == MEM) {
+							if (swapping) {
+								if (curr->state == MEM) {
+									page_free(curr->ppn);
+								}
+							} else {
 								page_free(curr->ppn);
 							}
 							vm_tlbshootdownvaddr(curr->vpn);
