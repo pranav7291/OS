@@ -52,6 +52,7 @@ as_create(void)
 	}
 
 	as->pte = NULL;
+	as->pte_last = NULL;
 	as->region = NULL;
 	as->stack_ptr = USERSTACK;// - (MYVM_STACKPAGES * PAGE_SIZE);
 	as->heap_bottom = (vaddr_t) 0;
@@ -102,7 +103,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 	}
 
 	struct PTE *old_pte_itr = old_addrspace->pte;
-	struct PTE *temp1, *new_pte;
+	struct PTE *new_pte;
 
 	while (old_pte_itr != NULL) {
 		if (new_as->pte == NULL) {
@@ -112,13 +113,14 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			}
 			new_as->pte->next = NULL;
 			new_pte = new_as->pte;
+			new_as->pte_last = new_as->pte;
 		} else {
-			for (temp1 = new_as->pte; temp1->next != NULL; temp1 = temp1->next);
 			new_pte = (struct PTE *) kmalloc(sizeof(struct PTE));
 			if(new_pte==NULL) {
 				return ENOMEM;
 			}
-			temp1->next = new_pte;
+			new_as->pte_last->next = new_pte;
+			new_as->pte_last = new_pte;
 		}
 		new_pte->vpn = old_pte_itr->vpn;
 		new_pte->permission = old_pte_itr->permission;

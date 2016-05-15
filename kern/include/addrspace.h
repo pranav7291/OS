@@ -92,6 +92,7 @@ struct addrspace {
         paddr_t as_stackpbase;
 #else*/
         struct PTE *pte;
+        struct PTE *pte_last;
         struct region *region;
         vaddr_t stack_ptr;
         vaddr_t heap_bottom;

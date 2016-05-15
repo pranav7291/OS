@@ -425,7 +425,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 	int found = 0;
 	int tlb_index = -1;
-	struct PTE *curr, *last;
+	struct PTE *curr;
 
 	if (as->pte == NULL) {
 		found = 1;
@@ -443,6 +443,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		as->pte->next = NULL;
 		swapdisk_index++;
 		as->pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
+		as->pte_last = as->pte;
 		curr = as->pte;
 	} else {
 		//if the first pte is the required pte
@@ -468,8 +469,8 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		curr->next = NULL;
 		swapdisk_index++;
 		curr->swapdisk_pos = swapdisk_index * PAGE_SIZE;
-		for (last = as->pte; last->next != NULL; last = last->next);
-		last->next = curr;
+		as->pte_last->next = curr;
+		as->pte_last = curr;
 	}
 
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
