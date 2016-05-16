@@ -46,7 +46,6 @@
 #include <synch.h>
 
 struct coremap_entry* coremap;
-struct bitmap *swapdisk_bitmap;
 
 void vm_bootstrap(void) {
 	last = ram_getsize();
@@ -92,9 +91,6 @@ void vm_bootstrap(void) {
 vaddr_t alloc_kpages(unsigned npages) {
 	int page_ind;
 	vaddr_t returner;
-//	if(swapping){
-//		lock_acquire(paging_lock);
-//	}
 	spinlock_acquire(&coremap_spinlock);
 
 //check for a free space
@@ -128,41 +124,81 @@ vaddr_t alloc_kpages(unsigned npages) {
 			usedBytes = usedBytes + PAGE_SIZE * npages;
 			spinlock_release(&coremap_spinlock);
 			returner = PADDR_TO_KVADDR(PAGE_SIZE * i);
-//			if(swapping){
-//				lock_release(paging_lock);
-//			}
 			return returner;
 		}
 	}
-	//todo no page found. write logic for swapout
-	if (swapping && npages <= 1) {
-		page_ind = evict();
-		coremap[page_ind].state = FIXED;
-		coremap[page_ind].busy = 0;
-		coremap[page_ind].size = npages;
-		coremap[page_ind].pte_ptr = NULL;
-		for (unsigned j = 1; j < npages; j++) {
-			coremap[page_ind + j].state = FIXED;
-			coremap[page_ind + j].busy = 0;
-			coremap[page_ind + j].size = 1;
-			coremap[page_ind + j].pte_ptr = NULL;
+	//If FREE pages not found, swapout pages
+	if (swapping) {
+		if (npages <= 1) {
+			page_ind = evict();
+			coremap[page_ind].state = FIXED;
+			coremap[page_ind].busy = 0;
+			coremap[page_ind].size = npages;
+			coremap[page_ind].pte_ptr = NULL;
+			for (unsigned j = 1; j < npages; j++) {
+				coremap[page_ind + j].state = FIXED;
+				coremap[page_ind + j].busy = 0;
+				coremap[page_ind + j].size = 1;
+				coremap[page_ind + j].pte_ptr = NULL;
+			}
+			bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE),
+					PAGE_SIZE * npages);
+
+			spinlock_release(&coremap_spinlock);
+
+			returner = PADDR_TO_KVADDR(PAGE_SIZE * page_ind);
+			return returner;
+		} else if (npages > 1) {
+			for (unsigned i = first_free_addr; i < num_pages; i++) {
+				int flag = 1;
+				if (coremap[i].state == DIRTY && ((i + npages) < num_pages)) {
+					for (unsigned j = 0; j < npages; j++) {
+						if (coremap[i + j].state == DIRTY) {
+						} else {
+							flag = 0;
+							break;
+						}
+					}
+					if (flag == 0) {
+						continue;
+					}
+					//swapout
+					for (unsigned j = 0; j < npages; j++) {
+						paddr_t paddr = PAGE_SIZE * (i + j);
+						vm_tlbshootdownvaddr(coremap[i + j].pte_ptr->vpn);
+						vm_tlbshootdownvaddr_for_all_cpus(
+								coremap[i + j].pte_ptr->vpn);
+						spinlock_release(&coremap_spinlock);
+						swapout(coremap[i + j].pte_ptr->swapdisk_pos, paddr);
+						spinlock_acquire(&coremap_spinlock);
+						coremap[i + j].vaddr = 0;
+						coremap[i + j].pte_ptr->state = DISK;
+					}
+
+					coremap[i].state = FIXED;
+					coremap[i].busy = 0;
+					coremap[i].size = npages;
+					coremap[i].pte_ptr = NULL;
+					for (unsigned j = 1; j < npages; j++) {
+						coremap[i + j].state = FIXED;
+						coremap[i + j].busy = 0;
+						coremap[i + j].size = 1;
+						coremap[i + j].pte_ptr = NULL;
+					}
+					bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE),
+							PAGE_SIZE * npages);
+
+					spinlock_release(&coremap_spinlock);
+					returner = PADDR_TO_KVADDR(PAGE_SIZE * i);
+					return returner;
+				}
+			}
+			panic("\nCouldn't find continuous n pages to swapout in allockpages!");
+			return 0;
 		}
-		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE),
-				PAGE_SIZE * npages);
-//		usedBytes = usedBytes + PAGE_SIZE * npages;
-
-		spinlock_release(&coremap_spinlock);
-
-		returner = PADDR_TO_KVADDR(PAGE_SIZE * page_ind);
-//		if(swapping){
-//			lock_release(paging_lock);
-//		}
-		return returner;
+		return 0;
 	} else {
 		spinlock_release(&coremap_spinlock);
-//		if(swapping){
-//			lock_release(paging_lock);
-//		}
 		return 0;
 	}
 }
@@ -199,7 +235,7 @@ paddr_t page_alloc(struct PTE *pte) {
 
 	for (unsigned i = first_free_addr; i < num_pages; i++) {
 		if (coremap[i].state == FREE && coremap[i].busy == 0) {
-			coremap[i].state = DIRTY;
+			coremap[i].state = CLEAN;
 			coremap[i].size = 1;
 			coremap[i].busy = 1;
 			coremap[i].pte_ptr = pte;
@@ -218,7 +254,7 @@ paddr_t page_alloc(struct PTE *pte) {
 	//todo no page found. write logic for swapout
 	if (swapping) {
 		page_ind = evict();
-		coremap[page_ind].state = DIRTY;
+		coremap[page_ind].state = CLEAN;
 		coremap[page_ind].size = 1;
 		coremap[page_ind].busy = 1;
 		coremap[page_ind].pte_ptr = pte;
@@ -310,7 +346,7 @@ int evict(){
 	while (flag == 0) {
 		rand_num = random();
 		victim = rand_num % num_pages;
-		if ((coremap[victim].state == DIRTY)){// || coremap[victim].state == CLEAN)) {
+		if ((coremap[victim].state == DIRTY) || (coremap[victim].state == CLEAN)) {
 			flag = 1;
 		}
 	}
@@ -441,8 +477,16 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		as->pte->vpn = faultaddress & PAGE_FRAME;
 		as->pte->state = MEM;
 		as->pte->next = NULL;
-		swapdisk_index++;
-		as->pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
+		if (swapping) {
+			unsigned x;
+			if (!bitmap_alloc(swapdisk_bitmap, &x)) {
+				as->pte->swapdisk_pos = x * PAGE_SIZE;
+			} else {
+				panic("\nRan out of swapdisk");
+			}
+		}
+//		swapdisk_index++;
+//		as->pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
 		as->pte_last = as->pte;
 		curr = as->pte;
 	} else {
@@ -467,8 +511,16 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		curr->vpn = faultaddress & PAGE_FRAME;
 		curr->state = MEM;
 		curr->next = NULL;
-		swapdisk_index++;
-		curr->swapdisk_pos = swapdisk_index * PAGE_SIZE;
+		if (swapping) {
+			unsigned x;
+			if (!bitmap_alloc(swapdisk_bitmap, &x)) {
+				curr->swapdisk_pos = x * PAGE_SIZE;
+			} else {
+				panic("\nRan out of swapdisk");
+			}
+		}
+//		swapdisk_index++;
+//		curr->swapdisk_pos = swapdisk_index * PAGE_SIZE;
 		as->pte_last->next = curr;
 		as->pte_last = curr;
 	}
@@ -481,6 +533,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			}
 //			lock_acquire(paging_lock);
 			swapin(curr->swapdisk_pos, curr->ppn);
+			spinlock_acquire(&coremap_spinlock);
+			coremap[(curr->ppn/PAGE_SIZE)].state = CLEAN;
+			spinlock_release(&coremap_spinlock);
 //			lock_release(paging_lock);
 			curr->state = MEM;
 		}
@@ -494,6 +549,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		splx(x);
 		spinlock_release(&tlb_spinlock);
 	} else if (faulttype == VM_FAULT_READONLY){
+		//todo mark in coremap as DIRTY
+		spinlock_acquire(&coremap_spinlock);
+		coremap[(curr->ppn/PAGE_SIZE)].state = DIRTY;
+		spinlock_release(&coremap_spinlock);
 		spinlock_acquire(&tlb_spinlock);
 		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);

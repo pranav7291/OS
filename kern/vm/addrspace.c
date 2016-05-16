@@ -34,6 +34,7 @@
 #include <vm.h>
 #include <proc.h>
 #include <synch.h>
+#include <bitmap.h>
 
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
@@ -126,8 +127,16 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		new_pte->permission = old_pte_itr->permission;
 		new_pte->referenced = old_pte_itr->referenced;
 		new_pte->state = DISK;
-		swapdisk_index++;
-		new_pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
+		if (swapping) {
+			unsigned x;
+			if (!bitmap_alloc(swapdisk_bitmap, &x)) {
+				new_pte->swapdisk_pos = x * PAGE_SIZE;
+			} else {
+				panic("\nRan out of swapdisk");
+			}
+		}
+//		swapdisk_index++;
+//		new_pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
 		new_pte->valid = old_pte_itr->valid;
 		new_pte->next = NULL;
 
@@ -188,6 +197,8 @@ as_destroy(struct addrspace *as) {
 				if (pte_itr->state == MEM) {
 					page_free(pte_itr->ppn);
 				}
+				KASSERT(bitmap_isset(swapdisk_bitmap, (pte_itr->swapdisk_pos / PAGE_SIZE)));
+				bitmap_unmark(swapdisk_bitmap,(pte_itr->swapdisk_pos / PAGE_SIZE));
 			}
 			else {
 				page_free(pte_itr->ppn);

@@ -51,6 +51,7 @@
 #include <kern/test161.h>
 #include <version.h>
 #include "autoconf.h"  // for pseudoconfig
+#include <bitmap.h>
 
 
 /*
@@ -154,6 +155,7 @@ shutdown(void)
 	if (swapping) {
 		vfs_close(swapdisk_vnode);
 		lock_destroy(paging_lock);
+		bitmap_destroy(swapdisk_bitmap);
 	}
 	kprintf("Shutting down.\n");
 
