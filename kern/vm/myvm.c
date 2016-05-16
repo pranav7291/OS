@@ -45,7 +45,7 @@
 #include <uio.h>
 #include <synch.h>
 
-struct coremap_entry* coremap;
+
 
 void vm_bootstrap(void) {
 	last = ram_getsize();

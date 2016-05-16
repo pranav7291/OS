@@ -160,8 +160,26 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		new_pte->next = NULL;
 
 		if (swapping) {
-			KASSERT(old_pte_itr->state == MEM);
-			KASSERT(old_pte_itr->ppn != (paddr_t)0);
+//			KASSERT(old_pte_itr->state == MEM);
+//			KASSERT(old_pte_itr->ppn != (paddr_t)0);
+			if (old_pte_itr->state == DISK) {
+				lock_acquire(old_pte_itr->pte_lock);
+				old_pte_itr->ppn = page_alloc(old_pte_itr);
+				spinlock_acquire(&coremap_spinlock);
+				coremap[(old_pte_itr->ppn / PAGE_SIZE)].busy = 1;
+				spinlock_release(&coremap_spinlock);
+
+				swapin(old_pte_itr->swapdisk_pos, old_pte_itr->ppn);
+
+				spinlock_acquire(&coremap_spinlock);
+				coremap[(old_pte_itr->ppn / PAGE_SIZE)].busy = 0;
+				coremap[(old_pte_itr->ppn / PAGE_SIZE)].state = CLEAN;
+				coremap[(old_pte_itr->ppn / PAGE_SIZE)].clock = true;
+				spinlock_release(&coremap_spinlock);
+				//			lock_release(paging_lock);
+				old_pte_itr->state = MEM;
+				lock_release(old_pte_itr->pte_lock);
+			}
 			vm_tlbshootdownvaddr(old_pte_itr->vpn);
 			swapout(new_pte->swapdisk_pos, old_pte_itr->ppn);
 			new_pte->ppn = (paddr_t)0;

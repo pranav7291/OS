@@ -54,6 +54,7 @@
 #define CLEAN 3
 #define FIXED 4
 
+struct coremap_entry* coremap;
 struct spinlock coremap_spinlock;
 struct spinlock tlb_spinlock;
 paddr_t first;
