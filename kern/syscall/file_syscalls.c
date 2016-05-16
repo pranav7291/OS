@@ -184,7 +184,8 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 		*retval = -1;
 		return EFAULT;
 	}
-	if (buf == NULL || buf ==(void *)0x40000000){
+//	if (buf == NULL || buf ==(void *)0x40000000){
+	if (buf ==(void *)0x40000000){
 		*retval = -1;
 		return EFAULT;
 	}
@@ -195,35 +196,31 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 //	//printf("File descriptor %d exists in the file table. Yay.", fd );
 
-	void *write_buf;
+//	void *write_buf;
 
-	write_buf = kmalloc(sizeof(*buf)*size);
-	if (write_buf == NULL) {
-		lock_release(curproc->proc_filedesc[fd]->fd_lock);
-		*retval = -1;
-		return ENOMEM;
-	}
+//	write_buf = kmalloc(sizeof(*buf)*size);
+//	if (write_buf == NULL) {
+//		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+//		*retval = -1;
+//		return ENOMEM;
+//	}
 
 	struct iovec iov;
 	struct uio uio_obj;
 	int err;
 	off_t pos= curproc->proc_filedesc[fd]->offset;
-	int result;
-	result = copyin((const_userptr_t)buf,write_buf,size);
+//	int result;
+//	result = copyin((const_userptr_t)buf,write_buf,size);
 
 //	//printf("the write buffer %s", write_buf);
 
-	if(result) { //memory problem
-//		//printf("\ncopyinstr failed with return code %d\n", result);
-
-		//free memory
-		kfree(write_buf);
-
-		//release the lock before returning error
-		lock_release(curproc->proc_filedesc[fd]->fd_lock);
-		*retval = -1;
-		return EINVAL;
-	}
+//	if(result) { //memory problem
+//		kfree(write_buf);
+//
+//		lock_release(curproc->proc_filedesc[fd]->fd_lock);
+//		*retval = -1;
+//		return EINVAL;
+//	}
 
 	//copying code from load_elf.c
 	iov.iov_ubase = (userptr_t) buf;
@@ -240,7 +237,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 	if (err) {
 //		//printf("%s: Write error: %s\n", curproc->proc_filedesc[fd]->name, strerror(err));
-		kfree(write_buf);
+//		kfree(write_buf);
 		lock_release(curproc->proc_filedesc[fd]->fd_lock);
 		*retval = -1;
 		return err;
@@ -250,7 +247,7 @@ int sys_write(int fd, const void *buf, size_t size, ssize_t *retval) {
 
 	*retval = size - uio_obj.uio_resid;
 
-	kfree(write_buf);
+//	kfree(write_buf);
 	lock_release(curproc->proc_filedesc[fd]->fd_lock);
 	//retval = bytes_written;
 	return 0; //done: handle returns. only specific returns possible
@@ -304,7 +301,8 @@ int sys_read(int fd,void *buf, size_t buflen, ssize_t *retval) {
 		return result;
 	}
 
-	if (buf == NULL || buf == (void *)0x40000000){
+//	if (buf == NULL || buf == (void *)0x40000000){
+	if (buf == (void *)0x40000000){
 		*retval = -1;
 		return EFAULT;
 	}
@@ -473,7 +471,8 @@ int sys_chdir(const char *path){
 
 int sys___getcwd(char *buf, size_t buflen, int *retval){
 
-	if (buf == NULL || buf==(void *)0x40000000){
+//	if (buf == NULL || buf==(void *)0x40000000){
+	if (buf==(void *)0x40000000){
 		*retval = -1;
 		return EFAULT;
 	}

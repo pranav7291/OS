@@ -169,6 +169,7 @@ void ipi_send(struct cpu *target, int code);
 void ipi_broadcast(int code);
 void ipi_tlbshootdown(struct cpu *target, const struct tlbshootdown *mapping);
 void vm_tlbshootdownvaddr_for_all_cpus(vaddr_t vaddr);
+void vm_tlbshootdownvaddr_for_specific_cpu(vaddr_t vaddr, int cpu_index);
 
 void interprocessor_interrupt(void);
 

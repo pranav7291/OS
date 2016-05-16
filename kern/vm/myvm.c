@@ -75,6 +75,7 @@ void vm_bootstrap(void) {
 		coremap[i].pte_ptr = NULL;
 		coremap[i].busy = 1;
 		coremap[i].clock = false;
+		coremap[i].cpu_num = -1;
 	}
 	for (unsigned i = first_free_addr; i < num_pages; i++) {
 		coremap[i].state = FREE;
@@ -82,6 +83,7 @@ void vm_bootstrap(void) {
 		coremap[i].pte_ptr = NULL;
 		coremap[i].busy = 0;
 		coremap[i].clock = false;
+		coremap[i].cpu_num = -1;
 	}
 	spinlock_init(&coremap_spinlock);
 	spinlock_init(&tlb_spinlock);
@@ -114,12 +116,14 @@ vaddr_t alloc_kpages(unsigned npages) {
 			coremap[i].busy = 0;
 			coremap[i].pte_ptr = NULL;
 			coremap[i].clock = false;
+			coremap[i].cpu_num = -1;
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[i + j].state = FIXED;
 				coremap[i + j].busy = 0;
 				coremap[i + j].size = 1;
 				coremap[i + j].pte_ptr = NULL;
 				coremap[i + j].clock = false;
+				coremap[i + j].cpu_num = -1;
 			}
 			bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE * npages);
 
@@ -138,12 +142,14 @@ vaddr_t alloc_kpages(unsigned npages) {
 			coremap[page_ind].size = npages;
 			coremap[page_ind].pte_ptr = NULL;
 			coremap[page_ind].clock = false;
+			coremap[page_ind].cpu_num = -1;
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[page_ind + j].state = FIXED;
 				coremap[page_ind + j].busy = 0;
 				coremap[page_ind + j].size = 1;
 				coremap[page_ind + j].pte_ptr = NULL;
 				coremap[page_ind + j].clock = false;
+				coremap[page_ind + j].cpu_num = -1;
 			}
 			bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE),
 					PAGE_SIZE * npages);
@@ -171,8 +177,11 @@ vaddr_t alloc_kpages(unsigned npages) {
 						paddr_t paddr = PAGE_SIZE * (i + j);
 						vm_tlbshootdownvaddr(coremap[i + j].pte_ptr->vpn);
 						spinlock_release(&coremap_spinlock);
-						vm_tlbshootdownvaddr_for_all_cpus(
-								coremap[i + j].pte_ptr->vpn);
+//						vm_tlbshootdownvaddr_for_all_cpus(
+//								coremap[i + j].pte_ptr->vpn);
+						if(coremap[i + j].cpu_num > -1){
+						vm_tlbshootdownvaddr_for_specific_cpu(coremap[i + j].pte_ptr->vpn, coremap[i + j].cpu_num);
+						}
 						lock_acquire(coremap[i + j].pte_ptr->pte_lock);
 						swapout(coremap[i + j].pte_ptr->swapdisk_pos, paddr);
 						spinlock_acquire(&coremap_spinlock);
@@ -185,12 +194,14 @@ vaddr_t alloc_kpages(unsigned npages) {
 					coremap[i].size = npages;
 					coremap[i].pte_ptr = NULL;
 					coremap[i].clock = false;
+					coremap[i].cpu_num = -1;
 					for (unsigned j = 1; j < npages; j++) {
 						coremap[i + j].state = FIXED;
 						coremap[i + j].busy = 0;
 						coremap[i + j].size = 1;
 						coremap[i + j].pte_ptr = NULL;
 						coremap[i + j].clock = false;
+						coremap[i].cpu_num = -1;
 					}
 					bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE),
 							PAGE_SIZE * npages);
@@ -219,8 +230,11 @@ void free_kpages(vaddr_t addr) {
 	int index = 0;
 	int temp = coremap[i].size;
 	for (int j = i; j < i + temp; j++) {
-	vm_tlbshootdownvaddr_for_all_cpus(addr + (index * PAGE_SIZE));
-	index++;
+//		vm_tlbshootdownvaddr_for_all_cpus(addr + (index * PAGE_SIZE));
+		if(coremap[j].cpu_num > -1){
+		vm_tlbshootdownvaddr_for_specific_cpu(addr + (index * PAGE_SIZE), coremap[j].cpu_num);
+		}
+		index++;
 	}
 	index = 0;
 	spinlock_acquire(&coremap_spinlock);
@@ -231,6 +245,7 @@ void free_kpages(vaddr_t addr) {
 		coremap[j].busy = 0;
 		coremap[j].pte_ptr = NULL;
 		coremap[j].clock = false;
+		coremap[j].cpu_num = -1;
 		index++;
 	}
 
@@ -258,6 +273,7 @@ paddr_t page_alloc(struct PTE *pte) {
 			coremap[i].busy = 0;
 			coremap[i].pte_ptr = pte;
 			coremap[i].clock = false;
+			coremap[i].cpu_num = -1;
 
 			bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE);
 
@@ -278,6 +294,7 @@ paddr_t page_alloc(struct PTE *pte) {
 		coremap[page_ind].busy = 0;
 		coremap[page_ind].pte_ptr = pte;
 		coremap[page_ind].clock = false;
+		coremap[page_ind].cpu_num = -1;
 
 		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE), PAGE_SIZE);
 
@@ -293,17 +310,22 @@ paddr_t page_alloc(struct PTE *pte) {
 void page_free(paddr_t paddr) {
 
 	//todo free the memory
+	int i = paddr/PAGE_SIZE;
 
 	vm_tlbshootdownvaddr(PADDR_TO_KVADDR(paddr));
-	vm_tlbshootdownvaddr_for_all_cpus(PADDR_TO_KVADDR(paddr));
+//	vm_tlbshootdownvaddr_for_all_cpus(PADDR_TO_KVADDR(paddr));
+	if(coremap[i].cpu_num > -1){
+	vm_tlbshootdownvaddr_for_specific_cpu(PADDR_TO_KVADDR(paddr), coremap[i].cpu_num);
+	}
+
 	spinlock_acquire(&coremap_spinlock);
-	int i = paddr/PAGE_SIZE;
 
 	coremap[i].state = FREE;
 	coremap[i].size = 1;
 	coremap[i].busy = 0;
 	coremap[i].pte_ptr = NULL;
 	coremap[i].clock = false;
+	coremap[i].cpu_num = -1;
 
 	usedBytes = usedBytes - PAGE_SIZE;
 	spinlock_release(&coremap_spinlock);
@@ -387,7 +409,11 @@ int evict(){
 	vm_tlbshootdownvaddr(coremap[victim].pte_ptr->vpn);
 	spinlock_release(&coremap_spinlock);
 
-	vm_tlbshootdownvaddr_for_all_cpus(coremap[victim].pte_ptr->vpn);
+//	vm_tlbshootdownvaddr_for_all_cpus(coremap[victim].pte_ptr->vpn);
+	if(coremap[victim].cpu_num > -1){
+	vm_tlbshootdownvaddr_for_specific_cpu(coremap[victim].pte_ptr->vpn, coremap[victim].cpu_num);
+	}
+
 	lock_acquire(coremap[victim].pte_ptr->pte_lock);
 	if (coremap[victim].state == DIRTY){
 		//todo set the VA for all pages
@@ -583,6 +609,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 				coremap[(curr->ppn / PAGE_SIZE)].state = CLEAN;
 			}
 			coremap[(curr->ppn/PAGE_SIZE)].clock = true;
+			coremap[(curr->ppn/PAGE_SIZE)].cpu_num = curcpu->c_number;
 			spinlock_release(&coremap_spinlock);
 //			lock_release(paging_lock);
 			curr->state = MEM;
@@ -590,9 +617,11 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		spinlock_acquire(&tlb_spinlock);
 		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
+		paddr_t phy_page_no = curr->ppn;
 		if(tlb_index < 0){
-			paddr_t phy_page_no = curr->ppn;
 			tlb_random((faultaddress & PAGE_FRAME ), ((phy_page_no & PAGE_FRAME)| TLBLO_VALID));
+		}else{
+			tlb_write((faultaddress & PAGE_FRAME), ((phy_page_no & PAGE_FRAME)| TLBLO_VALID), tlb_index);
 		}
 		splx(x);
 		spinlock_release(&tlb_spinlock);
@@ -602,6 +631,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			spinlock_acquire(&coremap_spinlock);
 			coremap[(curr->ppn / PAGE_SIZE)].state = DIRTY;
 			coremap[(curr->ppn / PAGE_SIZE)].clock = true;
+			coremap[(curr->ppn / PAGE_SIZE)].cpu_num = curcpu->c_number;
 			spinlock_release(&coremap_spinlock);
 		}
 		spinlock_acquire(&tlb_spinlock);

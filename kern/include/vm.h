@@ -86,6 +86,7 @@ struct coremap_entry {
 	bool busy;
 	struct PTE *pte_ptr;
 	bool clock;
+	int cpu_num;
 };
 
 /* Initialization function */

@@ -1169,6 +1169,13 @@ void vm_tlbshootdownvaddr_for_all_cpus(vaddr_t vaddr) {
 	}
 }
 
+void vm_tlbshootdownvaddr_for_specific_cpu(vaddr_t vaddr, int cpu_index) {
+	struct tlbshootdown mapping;
+	mapping.vaddr = vaddr;
+	struct cpu *c;
+	c = cpuarray_get(&allcpus, cpu_index);
+	ipi_tlbshootdown(c, &mapping);
+}
 
 void
 ipi_tlbshootdown(struct cpu *target, const struct tlbshootdown *mapping)
