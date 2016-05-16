@@ -131,12 +131,10 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			if(new_pte==NULL) {
 				return ENOMEM;
 			}
-			if(swapping){
-			new_pte->pte_lock = lock_create("pte_lock");
-			lock_acquire(new_pte->pte_lock);
-			lock_acquire(old_pte_itr->pte_lock);
-			}
 			if (swapping) {
+				new_pte->pte_lock = lock_create("pte_lock");
+				lock_acquire(new_pte->pte_lock);
+				lock_acquire(old_pte_itr->pte_lock);
 				new_as->pte_last->next = new_pte;
 				new_as->pte_last = new_pte;
 			}
@@ -148,16 +146,16 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 		new_pte->permission = old_pte_itr->permission;
 		new_pte->referenced = old_pte_itr->referenced;
 		new_pte->state = DISK;
-		if (swapping) {
-			unsigned x;
-			if (!bitmap_alloc(swapdisk_bitmap, &x)) {
-				new_pte->swapdisk_pos = x * PAGE_SIZE;
-			} else {
-				panic("\nRan out of swapdisk");
-			}
-		}
-//		swapdisk_index++;
-//		new_pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
+//		if (swapping) {
+//			unsigned x;
+//			if (!bitmap_alloc(swapdisk_bitmap, &x)) {
+//				new_pte->swapdisk_pos = x * PAGE_SIZE;
+//			} else {
+//				panic("\nRan out of swapdisk");
+//			}
+//		}
+		swapdisk_index++;
+		new_pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
 		new_pte->valid = old_pte_itr->valid;
 		new_pte->next = NULL;
 
@@ -178,7 +176,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 				coremap[(old_pte_itr->ppn / PAGE_SIZE)].state = CLEAN;
 				coremap[(old_pte_itr->ppn / PAGE_SIZE)].clock = true;
 				spinlock_release(&coremap_spinlock);
-				//			lock_release(paging_lock);
 				old_pte_itr->state = MEM;
 //				lock_release(old_pte_itr->pte_lock);
 			}
@@ -243,18 +240,19 @@ as_destroy(struct addrspace *as) {
 				if (pte_itr->state == MEM) {
 					page_free(pte_itr->ppn);
 				}
-				KASSERT(bitmap_isset(swapdisk_bitmap, (pte_itr->swapdisk_pos / PAGE_SIZE)));
-				bitmap_unmark(swapdisk_bitmap,(pte_itr->swapdisk_pos / PAGE_SIZE));
+//				KASSERT(bitmap_isset(swapdisk_bitmap, (pte_itr->swapdisk_pos / PAGE_SIZE)));
+//				bitmap_unmark(swapdisk_bitmap,(pte_itr->swapdisk_pos / PAGE_SIZE));
 			}
 			else {
 				page_free(pte_itr->ppn);
 			}
 			temp2 = pte_itr;
-			pte_itr = pte_itr->next;
+
 			if(swapping){
 				lock_release(temp2->pte_lock);
 				lock_destroy(temp2->pte_lock);
 			}
+			pte_itr = pte_itr->next;
 			kfree(temp2);
 		}
 		kfree(as);

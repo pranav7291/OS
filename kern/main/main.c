@@ -154,7 +154,7 @@ shutdown(void)
 {
 	if (swapping) {
 		vfs_close(swapdisk_vnode);
-		lock_destroy(paging_lock);
+//		lock_destroy(paging_lock);
 		bitmap_destroy(swapdisk_bitmap);
 	}
 	kprintf("Shutting down.\n");

@@ -72,16 +72,14 @@ void vm_bootstrap(void) {
 	for(unsigned i = 0; i<first_free_addr; i++) {
 		coremap[i].state = FIXED;
 		coremap[i].size = 1;
-		coremap[i].vaddr = PADDR_TO_KVADDR(i); //have to store the virtual address here
-		coremap[i].pte_ptr = 0;
+		coremap[i].pte_ptr = NULL;
 		coremap[i].busy = 1;
 		coremap[i].clock = false;
 	}
 	for (unsigned i = first_free_addr; i < num_pages; i++) {
 		coremap[i].state = FREE;
 		coremap[i].size = 1;
-		coremap[i].vaddr = PADDR_TO_KVADDR(i); //have to store the virtual address here
-		coremap[i].pte_ptr = 0;
+		coremap[i].pte_ptr = NULL;
 		coremap[i].busy = 0;
 		coremap[i].clock = false;
 	}
@@ -112,8 +110,8 @@ vaddr_t alloc_kpages(unsigned npages) {
 			}
 			//npages of free space found.
 			coremap[i].state = FIXED;
-			coremap[i].busy = 0;
 			coremap[i].size = npages;
+			coremap[i].busy = 0;
 			coremap[i].pte_ptr = NULL;
 			coremap[i].clock = false;
 			for (unsigned j = 1; j < npages; j++) {
@@ -175,10 +173,11 @@ vaddr_t alloc_kpages(unsigned npages) {
 						vm_tlbshootdownvaddr_for_all_cpus(
 								coremap[i + j].pte_ptr->vpn);
 						spinlock_release(&coremap_spinlock);
+						lock_acquire(coremap[i + j].pte_ptr->pte_lock);
 						swapout(coremap[i + j].pte_ptr->swapdisk_pos, paddr);
 						spinlock_acquire(&coremap_spinlock);
-						coremap[i + j].vaddr = 0;
 						coremap[i + j].pte_ptr->state = DISK;
+						lock_release(coremap[i + j].pte_ptr->pte_lock);
 					}
 
 					coremap[i].state = FIXED;
@@ -277,18 +276,11 @@ paddr_t page_alloc(struct PTE *pte) {
 
 		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE), PAGE_SIZE);
 
-//		usedBytes = usedBytes + PAGE_SIZE;
 		spinlock_release(&coremap_spinlock);
 		paddr_t returner = PAGE_SIZE * page_ind;
-//		if(swapping){
-//			lock_release(paging_lock);
-//		}
 		return returner;
 	} else {
 		spinlock_release(&coremap_spinlock);
-//		if(swapping){
-//			lock_release(paging_lock);
-//		}
 		return 0;
 	}
 }
@@ -324,10 +316,9 @@ void swapdisk_init(void){
 	}
 	if (swapping) {
 		clock_pte_ptr = first_free_addr;
-		paging_lock = lock_create("paging_lock");
+//		paging_lock = lock_create("paging_lock");
 		VOP_STAT(swapdisk_vnode, &swapdisk_stat);
 		num_swappages = swapdisk_stat.st_size / PAGE_SIZE;
-		//todo swap lock init here
 		swapdisk_bitmap = bitmap_create(SWAPDISK_SIZE);
 		KASSERT(swapdisk_bitmap != NULL);
 	}
@@ -390,6 +381,8 @@ int evict(){
 	vm_tlbshootdownvaddr(coremap[victim].pte_ptr->vpn);
 	vm_tlbshootdownvaddr_for_all_cpus(coremap[victim].pte_ptr->vpn);
 	spinlock_release(&coremap_spinlock);
+
+	lock_acquire(coremap[victim].pte_ptr->pte_lock);
 	if (coremap[victim].state == DIRTY){
 		//todo set the VA for all pages
 		swapout(coremap[victim].pte_ptr->swapdisk_pos, paddr);
@@ -397,8 +390,9 @@ int evict(){
 
 	spinlock_acquire(&coremap_spinlock);
 	coremap[victim].state = CLEAN;
-	coremap[victim].vaddr = 0;
 	coremap[victim].pte_ptr->state = DISK;
+	lock_release(coremap[victim].pte_ptr->pte_lock);
+
 	return victim;
 }
 
@@ -450,33 +444,24 @@ void vm_tlbshootdownvaddr(vaddr_t vaddr) {
 }
 
 int vm_fault(int faulttype, vaddr_t faultaddress) {
-//	if (swapping) {
-//		lock_acquire(paging_lock);
-//	}
-	//1. Check if the fault address is valid -
 	vaddr_t stack_top, stack_bottom;
 	vaddr_t vbase, vtop;
 	bool fheap = false;
 	bool fstack = false;
 	bool fregion = false;
-//	KASSERT(faultaddress!=0x4009C0);
-//	struct region *fault_reg = NULL;
 	struct addrspace *as = curproc->p_addrspace;
 	struct region *reg = as->region;
 	stack_top = USERSTACK;
 	stack_bottom = USERSTACK - MYVM_STACKPAGES * PAGE_SIZE;
 	if (faultaddress >= as->heap_bottom && faultaddress < as->heap_top) {
-		//fault address is in heap
 		fheap = true;
 	} else if ((faultaddress >= stack_bottom) && (faultaddress < stack_top)) {
-		//fault address is in stack
 		fstack = true;
 	} else { //search regions
 		while (reg != NULL) {
 			vbase = reg->base_vaddr;
 			vtop = vbase + (PAGE_SIZE * reg->num_pages);
 			if (faultaddress >= vbase && faultaddress < vtop) {
-//				fault_reg = reg;
 				fregion  = true;
 				break;
 			}
@@ -505,23 +490,22 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		lock_acquire(as->pte->pte_lock);
 		}
 		as->pte->ppn = page_alloc(as->pte);
-		//todo write swapin somewhere here
 		if(as->pte->ppn == (vaddr_t)0){
 			return ENOMEM;
 		}
 		as->pte->vpn = faultaddress & PAGE_FRAME;
 		as->pte->state = MEM;
 		as->pte->next = NULL;
-		if (swapping) {
-			unsigned x;
-			if (!bitmap_alloc(swapdisk_bitmap, &x)) {
-				as->pte->swapdisk_pos = x * PAGE_SIZE;
-			} else {
-				panic("\nRan out of swapdisk");
-			}
-		}
-//		swapdisk_index++;
-//		as->pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
+//		if (swapping) {
+//			unsigned x;
+//			if (!bitmap_alloc(swapdisk_bitmap, &x)) {
+//				as->pte->swapdisk_pos = x * PAGE_SIZE;
+//			} else {
+//				panic("\nRan out of swapdisk");
+//			}
+//		}
+		swapdisk_index++;
+		as->pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
 		as->pte_last = as->pte;
 		curr = as->pte;
 	} else {
@@ -554,16 +538,16 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		curr->vpn = faultaddress & PAGE_FRAME;
 		curr->state = MEM;
 		curr->next = NULL;
-		if (swapping) {
-			unsigned x;
-			if (!bitmap_alloc(swapdisk_bitmap, &x)) {
-				curr->swapdisk_pos = x * PAGE_SIZE;
-			} else {
-				panic("\nRan out of swapdisk");
-			}
-		}
-//		swapdisk_index++;
-//		curr->swapdisk_pos = swapdisk_index * PAGE_SIZE;
+//		if (swapping) {
+//			unsigned x;
+//			if (!bitmap_alloc(swapdisk_bitmap, &x)) {
+//				curr->swapdisk_pos = x * PAGE_SIZE;
+//			} else {
+//				panic("\nRan out of swapdisk");
+//			}
+//		}
+		swapdisk_index++;
+		curr->swapdisk_pos = swapdisk_index * PAGE_SIZE;
 		if(!swapping){
 			for (last = as->pte; last->next != NULL; last = last->next);
 			last->next = curr;
@@ -579,7 +563,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			if (found == 1){
 				curr->ppn = page_alloc(curr);
 			}
-//			lock_acquire(paging_lock);
 			spinlock_acquire(&coremap_spinlock);
 			coremap[(curr->ppn/PAGE_SIZE)].busy = 1;
 			spinlock_release(&coremap_spinlock);
@@ -627,7 +610,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 	}
 	if (swapping) {
 		lock_release(curr->pte_lock);
-//		lock_release(paging_lock);
 	}
 	return 0;
 }

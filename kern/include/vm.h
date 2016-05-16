@@ -80,7 +80,7 @@ size_t num_swappages;
 
 //added by sammokka
 struct coremap_entry {
-	vaddr_t vaddr;
+//	vaddr_t vaddr;
 	size_t size;
 	int state; //0 for clean, 1 for dirty, 2 for free
 	bool busy;
