@@ -244,7 +244,11 @@ paddr_t page_alloc(struct PTE *pte) {
 
 	for (unsigned i = first_free_addr; i < num_pages; i++) {
 		if (coremap[i].state == FREE && coremap[i].busy == 0) {
-			coremap[i].state = CLEAN;
+			if (swapping) {
+				coremap[i].state = CLEAN;
+			} else {
+				coremap[i].state = DIRTY;
+			}
 			coremap[i].size = 1;
 			coremap[i].busy = 1;
 			coremap[i].pte_ptr = pte;
@@ -484,7 +488,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 	int found = 0;
 	int tlb_index = -1;
-	struct PTE *curr;
+	struct PTE *curr, *last;
 
 	if (as->pte == NULL) {
 		found = 1;
@@ -544,8 +548,13 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		}
 //		swapdisk_index++;
 //		curr->swapdisk_pos = swapdisk_index * PAGE_SIZE;
-		as->pte_last->next = curr;
-		as->pte_last = curr;
+		if(!swapping){
+			for (last = as->pte; last->next != NULL; last = last->next);
+			last->next = curr;
+		} else {
+			as->pte_last->next = curr;
+			as->pte_last = curr;
+		}
 	}
 
 	if (faulttype == VM_FAULT_READ || faulttype == VM_FAULT_WRITE) {
@@ -574,10 +583,12 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		spinlock_release(&tlb_spinlock);
 	} else if (faulttype == VM_FAULT_READONLY){
 		//todo mark in coremap as DIRTY
-		spinlock_acquire(&coremap_spinlock);
-		coremap[(curr->ppn/PAGE_SIZE)].state = DIRTY;
-		coremap[(curr->ppn/PAGE_SIZE)].clock = true;
-		spinlock_release(&coremap_spinlock);
+		if (swapping) {
+			spinlock_acquire(&coremap_spinlock);
+			coremap[(curr->ppn / PAGE_SIZE)].state = DIRTY;
+			coremap[(curr->ppn / PAGE_SIZE)].clock = true;
+			spinlock_release(&coremap_spinlock);
+		}
 		spinlock_acquire(&tlb_spinlock);
 		int x = splhigh();
 		tlb_index = tlb_probe(faultaddress & PAGE_FRAME, 0);
