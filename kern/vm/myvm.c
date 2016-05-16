@@ -170,9 +170,9 @@ vaddr_t alloc_kpages(unsigned npages) {
 					for (unsigned j = 0; j < npages; j++) {
 						paddr_t paddr = PAGE_SIZE * (i + j);
 						vm_tlbshootdownvaddr(coremap[i + j].pte_ptr->vpn);
+						spinlock_release(&coremap_spinlock);
 						vm_tlbshootdownvaddr_for_all_cpus(
 								coremap[i + j].pte_ptr->vpn);
-						spinlock_release(&coremap_spinlock);
 						lock_acquire(coremap[i + j].pte_ptr->pte_lock);
 						swapout(coremap[i + j].pte_ptr->swapdisk_pos, paddr);
 						spinlock_acquire(&coremap_spinlock);
@@ -213,14 +213,19 @@ vaddr_t alloc_kpages(unsigned npages) {
 void free_kpages(vaddr_t addr) {
 
 	//todo free the memory
-	spinlock_acquire(&coremap_spinlock);
+
 	paddr_t paddr = KVADDR_TO_PADDR(addr) & PAGE_FRAME;
 	int i = paddr/PAGE_SIZE;
 	int index = 0;
 	int temp = coremap[i].size;
 	for (int j = i; j < i + temp; j++) {
+	vm_tlbshootdownvaddr_for_all_cpus(addr + (index * PAGE_SIZE));
+	index++;
+	}
+	index = 0;
+	spinlock_acquire(&coremap_spinlock);
+	for (int j = i; j < i + temp; j++) {
 		vm_tlbshootdownvaddr(addr + (index * PAGE_SIZE));
-		vm_tlbshootdownvaddr_for_all_cpus(addr + (index * PAGE_SIZE));
 		coremap[j].state = FREE;
 		coremap[j].size = 1;
 		coremap[j].busy = 0;
@@ -288,9 +293,10 @@ paddr_t page_alloc(struct PTE *pte) {
 void page_free(paddr_t paddr) {
 
 	//todo free the memory
-	spinlock_acquire(&coremap_spinlock);
+
 	vm_tlbshootdownvaddr(PADDR_TO_KVADDR(paddr));
 	vm_tlbshootdownvaddr_for_all_cpus(PADDR_TO_KVADDR(paddr));
+	spinlock_acquire(&coremap_spinlock);
 	int i = paddr/PAGE_SIZE;
 
 	coremap[i].state = FREE;
@@ -379,9 +385,9 @@ int evict(){
 	paddr_t paddr = PAGE_SIZE * victim;
 	//todo shoot down from the TLB. Check this
 	vm_tlbshootdownvaddr(coremap[victim].pte_ptr->vpn);
-	vm_tlbshootdownvaddr_for_all_cpus(coremap[victim].pte_ptr->vpn);
 	spinlock_release(&coremap_spinlock);
 
+	vm_tlbshootdownvaddr_for_all_cpus(coremap[victim].pte_ptr->vpn);
 	lock_acquire(coremap[victim].pte_ptr->pte_lock);
 	if (coremap[victim].state == DIRTY){
 		//todo set the VA for all pages
