@@ -586,7 +586,11 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
 			spinlock_acquire(&coremap_spinlock);
 			coremap[(curr->ppn/PAGE_SIZE)].busy = 0;
-			coremap[(curr->ppn/PAGE_SIZE)].state = CLEAN;
+			if (faulttype == VM_FAULT_WRITE) {
+				coremap[(curr->ppn / PAGE_SIZE)].state = DIRTY;
+			} else {
+				coremap[(curr->ppn / PAGE_SIZE)].state = CLEAN;
+			}
 			coremap[(curr->ppn/PAGE_SIZE)].clock = true;
 			spinlock_release(&coremap_spinlock);
 //			lock_release(paging_lock);

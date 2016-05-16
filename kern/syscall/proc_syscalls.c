@@ -539,6 +539,7 @@ int sys_sbrk(int amt, int *retval){
 						page_free(curr->ppn);
 					}
 					vm_tlbshootdownvaddr(curr->vpn);
+					lock_destroy(curr->pte_lock);
 					kfree(curr);
 				} else {
 					prev = as->pte;
@@ -553,6 +554,7 @@ int sys_sbrk(int amt, int *retval){
 							}
 							vm_tlbshootdownvaddr(curr->vpn);
 							prev->next = curr->next;
+							lock_destroy(curr->pte_lock);
 							kfree(curr);
 							break;
 						}

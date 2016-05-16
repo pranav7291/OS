@@ -116,6 +116,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			if(swapping){
 			new_as->pte->pte_lock = lock_create("pte_lock");
 			lock_acquire(new_as->pte->pte_lock);
+			lock_acquire(old_pte_itr->pte_lock);
 			}
 			new_as->pte->next = NULL;
 			new_pte = new_as->pte;
@@ -133,6 +134,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			if(swapping){
 			new_pte->pte_lock = lock_create("pte_lock");
 			lock_acquire(new_pte->pte_lock);
+			lock_acquire(old_pte_itr->pte_lock);
 			}
 			if (swapping) {
 				new_as->pte_last->next = new_pte;
@@ -163,7 +165,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 //			KASSERT(old_pte_itr->state == MEM);
 //			KASSERT(old_pte_itr->ppn != (paddr_t)0);
 			if (old_pte_itr->state == DISK) {
-				lock_acquire(old_pte_itr->pte_lock);
+//				lock_acquire(old_pte_itr->pte_lock);
 				old_pte_itr->ppn = page_alloc(old_pte_itr);
 				spinlock_acquire(&coremap_spinlock);
 				coremap[(old_pte_itr->ppn / PAGE_SIZE)].busy = 1;
@@ -178,9 +180,9 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 				spinlock_release(&coremap_spinlock);
 				//			lock_release(paging_lock);
 				old_pte_itr->state = MEM;
-				lock_release(old_pte_itr->pte_lock);
+//				lock_release(old_pte_itr->pte_lock);
 			}
-			vm_tlbshootdownvaddr(old_pte_itr->vpn);
+//			vm_tlbshootdownvaddr(old_pte_itr->vpn);
 			swapout(new_pte->swapdisk_pos, old_pte_itr->ppn);
 			new_pte->ppn = (paddr_t)0;
 		} else {
@@ -193,6 +195,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 					PAGE_SIZE);
 		}
 		if(swapping){
+			lock_release(old_pte_itr->pte_lock);
 			lock_release(new_pte->pte_lock);
 		}
 		old_pte_itr = old_pte_itr->next;
