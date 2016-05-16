@@ -66,6 +66,7 @@ unsigned swapdisk_index;	//to store current index of swapdisk ptr
 struct vnode *swapdisk_vnode;
 struct lock *paging_lock;
 struct bitmap *swapdisk_bitmap;
+unsigned clock_pte_ptr;
 
 //char *helper1[1000];
 //char *helper2[2000];
@@ -83,6 +84,7 @@ struct coremap_entry {
 	int state; //0 for clean, 1 for dirty, 2 for free
 	bool busy;
 	struct PTE *pte_ptr;
+	bool clock;
 };
 
 /* Initialization function */

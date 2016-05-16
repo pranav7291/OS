@@ -75,6 +75,7 @@ void vm_bootstrap(void) {
 		coremap[i].vaddr = PADDR_TO_KVADDR(i); //have to store the virtual address here
 		coremap[i].pte_ptr = 0;
 		coremap[i].busy = 1;
+		coremap[i].clock = false;
 	}
 	for (unsigned i = first_free_addr; i < num_pages; i++) {
 		coremap[i].state = FREE;
@@ -82,6 +83,7 @@ void vm_bootstrap(void) {
 		coremap[i].vaddr = PADDR_TO_KVADDR(i); //have to store the virtual address here
 		coremap[i].pte_ptr = 0;
 		coremap[i].busy = 0;
+		coremap[i].clock = false;
 	}
 	spinlock_init(&coremap_spinlock);
 	spinlock_init(&tlb_spinlock);
@@ -113,11 +115,13 @@ vaddr_t alloc_kpages(unsigned npages) {
 			coremap[i].busy = 0;
 			coremap[i].size = npages;
 			coremap[i].pte_ptr = NULL;
+			coremap[i].clock = false;
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[i + j].state = FIXED;
 				coremap[i + j].busy = 0;
 				coremap[i + j].size = 1;
 				coremap[i + j].pte_ptr = NULL;
+				coremap[i + j].clock = false;
 			}
 			bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE * npages);
 
@@ -135,11 +139,13 @@ vaddr_t alloc_kpages(unsigned npages) {
 			coremap[page_ind].busy = 0;
 			coremap[page_ind].size = npages;
 			coremap[page_ind].pte_ptr = NULL;
+			coremap[page_ind].clock = false;
 			for (unsigned j = 1; j < npages; j++) {
 				coremap[page_ind + j].state = FIXED;
 				coremap[page_ind + j].busy = 0;
 				coremap[page_ind + j].size = 1;
 				coremap[page_ind + j].pte_ptr = NULL;
+				coremap[page_ind + j].clock = false;
 			}
 			bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE),
 					PAGE_SIZE * npages);
@@ -179,11 +185,13 @@ vaddr_t alloc_kpages(unsigned npages) {
 					coremap[i].busy = 0;
 					coremap[i].size = npages;
 					coremap[i].pte_ptr = NULL;
+					coremap[i].clock = false;
 					for (unsigned j = 1; j < npages; j++) {
 						coremap[i + j].state = FIXED;
 						coremap[i + j].busy = 0;
 						coremap[i + j].size = 1;
 						coremap[i + j].pte_ptr = NULL;
+						coremap[i + j].clock = false;
 					}
 					bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE),
 							PAGE_SIZE * npages);
@@ -217,6 +225,7 @@ void free_kpages(vaddr_t addr) {
 		coremap[j].size = 1;
 		coremap[j].busy = 0;
 		coremap[j].pte_ptr = NULL;
+		coremap[j].clock = false;
 		index++;
 	}
 
@@ -239,6 +248,7 @@ paddr_t page_alloc(struct PTE *pte) {
 			coremap[i].size = 1;
 			coremap[i].busy = 1;
 			coremap[i].pte_ptr = pte;
+			coremap[i].clock = false;
 
 			bzero((void *) PADDR_TO_KVADDR(i * PAGE_SIZE), PAGE_SIZE);
 
@@ -258,6 +268,7 @@ paddr_t page_alloc(struct PTE *pte) {
 		coremap[page_ind].size = 1;
 		coremap[page_ind].busy = 1;
 		coremap[page_ind].pte_ptr = pte;
+		coremap[page_ind].clock = false;
 
 		bzero((void *) PADDR_TO_KVADDR(page_ind * PAGE_SIZE), PAGE_SIZE);
 
@@ -288,6 +299,7 @@ void page_free(paddr_t paddr) {
 	coremap[i].size = 1;
 	coremap[i].busy = 0;
 	coremap[i].pte_ptr = NULL;
+	coremap[i].clock = false;
 
 	usedBytes = usedBytes - PAGE_SIZE;
 	spinlock_release(&coremap_spinlock);
@@ -305,6 +317,7 @@ void swapdisk_init(void){
 		swapping = false;
 	}
 	if (swapping) {
+		clock_pte_ptr = first_free_addr;
 		paging_lock = lock_create("paging_lock");
 		VOP_STAT(swapdisk_vnode, &swapdisk_stat);
 		num_swappages = swapdisk_stat.st_size / PAGE_SIZE;
@@ -341,18 +354,28 @@ void swapin(vaddr_t swapaddr, paddr_t paddr){
 }
 
 int evict(){
-	int victim, rand_num, flag;
+	int victim, flag;
 	flag = 0;
+
 	while (flag == 0) {
-		rand_num = random();
-		victim = rand_num % num_pages;
-		if ((coremap[victim].state == DIRTY) || (coremap[victim].state == CLEAN)) {
-			flag = 1;
+		clock_pte_ptr = clock_pte_ptr % num_pages;
+		if (clock_pte_ptr < first_free_addr) {
+			clock_pte_ptr = clock_pte_ptr + first_free_addr;
 		}
+		if ((coremap[clock_pte_ptr].state == DIRTY)
+				|| (coremap[clock_pte_ptr].state == CLEAN)) {
+			if (!coremap[clock_pte_ptr].clock) {
+				flag = 1;
+			} else {
+				coremap[clock_pte_ptr].clock = false;
+			}
+		}
+		clock_pte_ptr++;
 	}
 	if(flag == 0){
 		return -1;
 	}
+	victim = clock_pte_ptr - 1;
 	KASSERT(coremap[victim].pte_ptr != NULL);
 	paddr_t paddr = PAGE_SIZE * victim;
 	//todo shoot down from the TLB. Check this
@@ -535,6 +558,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 			swapin(curr->swapdisk_pos, curr->ppn);
 			spinlock_acquire(&coremap_spinlock);
 			coremap[(curr->ppn/PAGE_SIZE)].state = CLEAN;
+			coremap[(curr->ppn/PAGE_SIZE)].clock = true;
 			spinlock_release(&coremap_spinlock);
 //			lock_release(paging_lock);
 			curr->state = MEM;
@@ -552,6 +576,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		//todo mark in coremap as DIRTY
 		spinlock_acquire(&coremap_spinlock);
 		coremap[(curr->ppn/PAGE_SIZE)].state = DIRTY;
+		coremap[(curr->ppn/PAGE_SIZE)].clock = true;
 		spinlock_release(&coremap_spinlock);
 		spinlock_acquire(&tlb_spinlock);
 		int x = splhigh();
