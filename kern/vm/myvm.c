@@ -221,6 +221,7 @@ void free_kpages(vaddr_t addr) {
 	int temp = coremap[i].size;
 	for (int j = i; j < i + temp; j++) {
 		vm_tlbshootdownvaddr(addr + (index * PAGE_SIZE));
+		vm_tlbshootdownvaddr_for_all_cpus(addr + (index * PAGE_SIZE));
 		coremap[j].state = FREE;
 		coremap[j].size = 1;
 		coremap[j].busy = 0;
@@ -297,6 +298,7 @@ void page_free(paddr_t paddr) {
 	//todo free the memory
 	spinlock_acquire(&coremap_spinlock);
 	vm_tlbshootdownvaddr(PADDR_TO_KVADDR(paddr));
+	vm_tlbshootdownvaddr_for_all_cpus(PADDR_TO_KVADDR(paddr));
 	int i = paddr/PAGE_SIZE;
 
 	coremap[i].state = FREE;
