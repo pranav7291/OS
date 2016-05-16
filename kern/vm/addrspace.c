@@ -174,7 +174,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 				swapin(old_pte_itr->swapdisk_pos, old_pte_itr->ppn);
 
 				spinlock_acquire(&coremap_spinlock);
-				coremap[(old_pte_itr->ppn / PAGE_SIZE)].busy = 0;
+//				coremap[(old_pte_itr->ppn / PAGE_SIZE)].busy = 0;
 				coremap[(old_pte_itr->ppn / PAGE_SIZE)].state = CLEAN;
 				coremap[(old_pte_itr->ppn / PAGE_SIZE)].clock = true;
 				spinlock_release(&coremap_spinlock);
@@ -184,6 +184,11 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			}
 //			vm_tlbshootdownvaddr(old_pte_itr->vpn);
 			swapout(new_pte->swapdisk_pos, old_pte_itr->ppn);
+
+			spinlock_acquire(&coremap_spinlock);
+			coremap[(old_pte_itr->ppn / PAGE_SIZE)].busy = 0;
+			spinlock_release(&coremap_spinlock);
+
 			new_pte->ppn = (paddr_t)0;
 		} else {
 			new_pte->ppn = page_alloc(new_pte);
