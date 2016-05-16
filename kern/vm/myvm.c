@@ -250,7 +250,7 @@ paddr_t page_alloc(struct PTE *pte) {
 				coremap[i].state = DIRTY;
 			}
 			coremap[i].size = 1;
-			coremap[i].busy = 1;
+			coremap[i].busy = 0;
 			coremap[i].pte_ptr = pte;
 			coremap[i].clock = false;
 
@@ -270,7 +270,7 @@ paddr_t page_alloc(struct PTE *pte) {
 		page_ind = evict();
 		coremap[page_ind].state = CLEAN;
 		coremap[page_ind].size = 1;
-		coremap[page_ind].busy = 1;
+		coremap[page_ind].busy = 0;
 		coremap[page_ind].pte_ptr = pte;
 		coremap[page_ind].clock = false;
 
@@ -366,8 +366,9 @@ int evict(){
 		if (clock_pte_ptr < first_free_addr) {
 			clock_pte_ptr = clock_pte_ptr + first_free_addr;
 		}
-		if ((coremap[clock_pte_ptr].state == DIRTY)
-				|| (coremap[clock_pte_ptr].state == CLEAN)) {
+		if (((coremap[clock_pte_ptr].state == DIRTY)
+				|| (coremap[clock_pte_ptr].state == CLEAN))
+				&& (coremap[clock_pte_ptr].busy == 0)) {
 			if (!coremap[clock_pte_ptr].clock) {
 				flag = 1;
 			} else {
@@ -380,6 +381,7 @@ int evict(){
 		return -1;
 	}
 	victim = clock_pte_ptr - 1;
+	coremap[victim].busy = 1;
 	KASSERT(coremap[victim].pte_ptr != NULL);
 	paddr_t paddr = PAGE_SIZE * victim;
 	//todo shoot down from the TLB. Check this
@@ -446,9 +448,9 @@ void vm_tlbshootdownvaddr(vaddr_t vaddr) {
 }
 
 int vm_fault(int faulttype, vaddr_t faultaddress) {
-	if (swapping) {
-		lock_acquire(paging_lock);
-	}
+//	if (swapping) {
+//		lock_acquire(paging_lock);
+//	}
 	//1. Check if the fault address is valid -
 	vaddr_t stack_top, stack_bottom;
 	vaddr_t vbase, vtop;
@@ -496,6 +498,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		if(as->pte == NULL){
 			return ENOMEM;
 		}
+		if(swapping){
+		as->pte->pte_lock = lock_create("pte_lock");
+		lock_acquire(as->pte->pte_lock);
+		}
 		as->pte->ppn = page_alloc(as->pte);
 		//todo write swapin somewhere here
 		if(as->pte->ppn == (vaddr_t)0){
@@ -521,6 +527,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		for (curr = as->pte; curr != NULL; curr = curr->next){
 			if(curr->vpn == (faultaddress & PAGE_FRAME)){
 				found = 1;
+				if(swapping){
+					lock_acquire(curr->pte_lock);
+				}
 				break;
 			}
 		}
@@ -531,6 +540,11 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		if(curr == NULL){
 			return ENOMEM;
 		}
+		if(swapping){
+			curr->pte_lock = lock_create("pte_lock");
+			lock_acquire(curr->pte_lock);
+		}
+
 		curr->ppn = page_alloc(curr);
 		if(curr->ppn == (vaddr_t)0){
 			return ENOMEM;
@@ -564,8 +578,14 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 				curr->ppn = page_alloc(curr);
 			}
 //			lock_acquire(paging_lock);
-			swapin(curr->swapdisk_pos, curr->ppn);
 			spinlock_acquire(&coremap_spinlock);
+			coremap[(curr->ppn/PAGE_SIZE)].busy = 1;
+			spinlock_release(&coremap_spinlock);
+
+			swapin(curr->swapdisk_pos, curr->ppn);
+
+			spinlock_acquire(&coremap_spinlock);
+			coremap[(curr->ppn/PAGE_SIZE)].busy = 0;
 			coremap[(curr->ppn/PAGE_SIZE)].state = CLEAN;
 			coremap[(curr->ppn/PAGE_SIZE)].clock = true;
 			spinlock_release(&coremap_spinlock);
@@ -600,7 +620,8 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		spinlock_release(&tlb_spinlock);
 	}
 	if (swapping) {
-		lock_release(paging_lock);
+		lock_release(curr->pte_lock);
+//		lock_release(paging_lock);
 	}
 	return 0;
 }

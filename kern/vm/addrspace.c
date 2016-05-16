@@ -65,9 +65,9 @@ as_create(void)
 int
 as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 {
-	if(swapping){
-		lock_acquire(paging_lock);
-	}
+//	if(swapping){
+//		lock_acquire(paging_lock);
+//	}
 	struct addrspace *new_as;
 	new_as = as_create();
 	if (new_as==NULL) {
@@ -113,6 +113,10 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			if (new_as->pte == NULL) {
 				return ENOMEM;
 			}
+			if(swapping){
+			new_as->pte->pte_lock = lock_create("pte_lock");
+			lock_acquire(new_as->pte->pte_lock);
+			}
 			new_as->pte->next = NULL;
 			new_pte = new_as->pte;
 			if (swapping) {
@@ -125,6 +129,10 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			new_pte = (struct PTE *) kmalloc(sizeof(struct PTE));
 			if(new_pte==NULL) {
 				return ENOMEM;
+			}
+			if(swapping){
+			new_pte->pte_lock = lock_create("pte_lock");
+			lock_acquire(new_pte->pte_lock);
 			}
 			if (swapping) {
 				new_as->pte_last->next = new_pte;
@@ -155,9 +163,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			KASSERT(old_pte_itr->state == MEM);
 			KASSERT(old_pte_itr->ppn != (paddr_t)0);
 			vm_tlbshootdownvaddr(old_pte_itr->vpn);
-//			lock_acquire(paging_lock);
 			swapout(new_pte->swapdisk_pos, old_pte_itr->ppn);
-//			lock_release(paging_lock);
 			new_pte->ppn = (paddr_t)0;
 		} else {
 			new_pte->ppn = page_alloc(new_pte);
@@ -168,7 +174,9 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 					(const void *) PADDR_TO_KVADDR(old_pte_itr->ppn),
 					PAGE_SIZE);
 		}
-
+		if(swapping){
+			lock_release(new_pte->pte_lock);
+		}
 		old_pte_itr = old_pte_itr->next;
 	}
 
@@ -176,9 +184,9 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 	new_as->heap_top = old_addrspace->heap_top;
 	new_as->stack_ptr = old_addrspace->stack_ptr;
 
-	if(swapping){
-		lock_release(paging_lock);
-	}
+//	if(swapping){
+//		lock_release(paging_lock);
+//	}
 
 	*ret = new_as;
 	return 0;
@@ -186,9 +194,9 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 
 void
 as_destroy(struct addrspace *as) {
-	if(swapping){
-		lock_acquire(paging_lock);
-	}
+//	if(swapping){
+//		lock_acquire(paging_lock);
+//	}
 
 	if (as != NULL) {
 		vm_tlbshootdown_all();
@@ -205,6 +213,7 @@ as_destroy(struct addrspace *as) {
 		struct PTE *temp2;
 		while (pte_itr != NULL) {
 			if (swapping) {
+				lock_acquire(pte_itr->pte_lock);
 				if (pte_itr->state == MEM) {
 					page_free(pte_itr->ppn);
 				}
@@ -216,13 +225,17 @@ as_destroy(struct addrspace *as) {
 			}
 			temp2 = pte_itr;
 			pte_itr = pte_itr->next;
+			if(swapping){
+				lock_release(temp2->pte_lock);
+				lock_destroy(temp2->pte_lock);
+			}
 			kfree(temp2);
 		}
 		kfree(as);
 	}
-	if(swapping){
-		lock_release(paging_lock);
-	}
+//	if(swapping){
+//		lock_release(paging_lock);
+//	}
 }
 
 void

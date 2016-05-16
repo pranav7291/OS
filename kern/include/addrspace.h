@@ -67,8 +67,8 @@ struct PTE{
 	bool valid;		//has a physical page been allocated for this virtual page or not
 	bool referenced;	//has the page been read or written to recently
 	paddr_t swapdisk_pos;	//to store the swapdisk addr
-//	struct spinlock *ptelock;
 	struct PTE *next;
+	struct lock *pte_lock;
 };
 
 struct region{
