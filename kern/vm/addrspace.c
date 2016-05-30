@@ -36,15 +36,8 @@
 #include <synch.h>
 #include <bitmap.h>
 
-/*
- * Note! If OPT_DUMBVM is set, as is the case until you start the VM
- * assignment, this file is not compiled or linked or in any way
- * used. The cheesy hack versions in dumbvm.c are used instead.
- */
-
 struct addrspace *
-as_create(void)
-{
+as_create(void) {
 	struct addrspace *as;
 
 	as = kmalloc(sizeof(struct addrspace));
@@ -55,22 +48,20 @@ as_create(void)
 	as->pte = NULL;
 	as->pte_last = NULL;
 	as->region = NULL;
-	as->stack_ptr = USERSTACK;// - (MYVM_STACKPAGES * PAGE_SIZE);
+	as->stack_ptr = USERSTACK;
 	as->heap_bottom = (vaddr_t) 0;
-	as->heap_top = (vaddr_t) 0;//as->stack_ptr;
+	as->heap_top = (vaddr_t) 0;
 
 	return as;
 }
 
-int
-as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
-{
+int as_copy(struct addrspace *old_addrspace, struct addrspace **ret) {
 //	if(swapping){
 //		lock_acquire(paging_lock);
 //	}
 	struct addrspace *new_as;
 	new_as = as_create();
-	if (new_as==NULL) {
+	if (new_as == NULL) {
 		return ENOMEM;
 	}
 
@@ -87,9 +78,10 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			new_as->region->next = NULL;
 			newreg = new_as->region;
 		} else {
-			for (temp = new_as->region; temp->next != NULL; temp = temp->next);
+			for (temp = new_as->region; temp->next != NULL; temp = temp->next)
+				;
 			newreg = (struct region *) kmalloc(sizeof(struct region));
-			if(newreg==NULL) {
+			if (newreg == NULL) {
 				return ENOMEM;
 			}
 			temp->next = newreg;
@@ -113,10 +105,10 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			if (new_as->pte == NULL) {
 				return ENOMEM;
 			}
-			if(swapping){
-			new_as->pte->pte_lock = lock_create("pte_lock");
-			lock_acquire(new_as->pte->pte_lock);
-			lock_acquire(old_pte_itr->pte_lock);
+			if (swapping) {
+				new_as->pte->pte_lock = lock_create("pte_lock");
+				lock_acquire(new_as->pte->pte_lock);
+				lock_acquire(old_pte_itr->pte_lock);
 			}
 			new_as->pte->next = NULL;
 			new_pte = new_as->pte;
@@ -124,11 +116,13 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 				new_as->pte_last = new_as->pte;
 			}
 		} else {
-			if(!swapping){
-				for (temp1 = new_as->pte; temp1->next != NULL; temp1 = temp1->next);
+			if (!swapping) {
+				for (temp1 = new_as->pte; temp1->next != NULL;
+						temp1 = temp1->next)
+					;
 			}
 			new_pte = (struct PTE *) kmalloc(sizeof(struct PTE));
-			if(new_pte==NULL) {
+			if (new_pte == NULL) {
 				return ENOMEM;
 			}
 			if (swapping) {
@@ -138,13 +132,12 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 				new_as->pte_last->next = new_pte;
 				new_as->pte_last = new_pte;
 			}
-			if(!swapping){
+			if (!swapping) {
 				temp1->next = new_pte;
 			}
 		}
 		new_pte->vpn = old_pte_itr->vpn;
 		new_pte->permission = old_pte_itr->permission;
-		new_pte->referenced = old_pte_itr->referenced;
 		new_pte->state = DISK;
 //		if (swapping) {
 //			unsigned x;
@@ -156,7 +149,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 //		}
 		swapdisk_index++;
 		new_pte->swapdisk_pos = swapdisk_index * PAGE_SIZE;
-		new_pte->valid = old_pte_itr->valid;
 		new_pte->next = NULL;
 
 		if (swapping) {
@@ -172,7 +164,6 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 				swapin(old_pte_itr->swapdisk_pos, old_pte_itr->ppn);
 
 				spinlock_acquire(&coremap_spinlock);
-//				coremap[(old_pte_itr->ppn / PAGE_SIZE)].busy = 0;
 				coremap[(old_pte_itr->ppn / PAGE_SIZE)].state = CLEAN;
 				coremap[(old_pte_itr->ppn / PAGE_SIZE)].clock = true;
 				spinlock_release(&coremap_spinlock);
@@ -186,7 +177,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 			coremap[(old_pte_itr->ppn / PAGE_SIZE)].busy = 0;
 			spinlock_release(&coremap_spinlock);
 
-			new_pte->ppn = (paddr_t)0;
+			new_pte->ppn = (paddr_t) 0;
 		} else {
 			new_pte->ppn = page_alloc(new_pte);
 			if (new_pte->ppn == (paddr_t) 0) {
@@ -196,7 +187,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 					(const void *) PADDR_TO_KVADDR(old_pte_itr->ppn),
 					PAGE_SIZE);
 		}
-		if(swapping){
+		if (swapping) {
 			lock_release(old_pte_itr->pte_lock);
 			lock_release(new_pte->pte_lock);
 		}
@@ -215,8 +206,7 @@ as_copy(struct addrspace *old_addrspace, struct addrspace **ret)
 	return 0;
 }
 
-void
-as_destroy(struct addrspace *as) {
+void as_destroy(struct addrspace *as) {
 //	if(swapping){
 //		lock_acquire(paging_lock);
 //	}
@@ -242,13 +232,12 @@ as_destroy(struct addrspace *as) {
 				}
 //				KASSERT(bitmap_isset(swapdisk_bitmap, (pte_itr->swapdisk_pos / PAGE_SIZE)));
 //				bitmap_unmark(swapdisk_bitmap,(pte_itr->swapdisk_pos / PAGE_SIZE));
-			}
-			else {
+			} else {
 				page_free(pte_itr->ppn);
 			}
 			temp2 = pte_itr;
 
-			if(swapping){
+			if (swapping) {
 				lock_release(temp2->pte_lock);
 				lock_destroy(temp2->pte_lock);
 			}
@@ -262,9 +251,7 @@ as_destroy(struct addrspace *as) {
 //	}
 }
 
-void
-as_activate(void)
-{
+void as_activate(void) {
 	int i, spl;
 	struct addrspace *as;
 
@@ -276,37 +263,18 @@ as_activate(void)
 	/* Disable interrupts on this CPU while frobbing the TLB. */
 	spl = splhigh();
 
-	for (i=0; i<NUM_TLB; i++) {
+	for (i = 0; i < NUM_TLB; i++) {
 		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
 	}
 
 	splx(spl);
 }
 
-void
-as_deactivate(void)
-{
-	/*
-	 * Write this. For many designs it won't need to actually do
-	 * anything. See proc.c for an explanation of why it (might)
-	 * be needed.
-	 */
+void as_deactivate(void) {
 }
 
-/*
- * Set up a segment at virtual address VADDR of size MEMSIZE. The
- * segment in memory extends from VADDR up to (but not including)
- * VADDR+MEMSIZE.
- *
- * The READABLE, WRITEABLE, and EXECUTABLE flags are set if read,
- * write, or execute permission should be set on the segment. At the
- * moment, these are ignored. When you write the VM system, you may
- * want to implement them.
- */
-int
-as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
-		 int readable, int writeable, int executable)
-{
+int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
+		int readable, int writeable, int executable) {
 	//Aligning the region
 	memsize += vaddr & ~(vaddr_t) PAGE_FRAME;
 	vaddr &= PAGE_FRAME;
@@ -317,7 +285,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 
 	struct region *reg_end;
 
-	if(as->region == NULL){
+	if (as->region == NULL) {
 		as->region = (struct region *) kmalloc(sizeof(struct region));
 		if (as->region == NULL) {
 			return ENOMEM;
@@ -338,44 +306,36 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	reg_end->num_pages = num_pages;
 	reg_end->permission = 7 & (readable | writeable | executable);
 	reg_end->base_vaddr = vaddr;
-	as->heap_bottom = (vaddr + (PAGE_SIZE * num_pages));//&PAGE_FRAME;
+	as->heap_bottom = (vaddr + (PAGE_SIZE * num_pages)); //&PAGE_FRAME;
 	as->heap_top = as->heap_bottom;
 
 	return 0;
 }
 
-int
-as_prepare_load(struct addrspace *as)
-{
+int as_prepare_load(struct addrspace *as) {
 	struct region * regionitr;
 	regionitr = as->region;
-	while(regionitr != NULL){
+	while (regionitr != NULL) {
 		regionitr->old_permission = regionitr->permission;
 		regionitr->permission = 7 & (010 | 001);	//write + execute
 		regionitr = regionitr->next;
 	}
-	//todo which page table entries do I setup here?? page table entries for each region
 	return 0;
 }
 
-int
-as_complete_load(struct addrspace *as)
-{
+int as_complete_load(struct addrspace *as) {
 	struct region * regionitr;
 	regionitr = as->region;
-	while(regionitr != NULL){
+	while (regionitr != NULL) {
 		regionitr->permission = regionitr->old_permission;
 		regionitr = regionitr->next;
 	}
-	//todo invalidate TLB entries ???
 	return 0;
 }
 
-int
-as_define_stack(struct addrspace *as, vaddr_t *stackptr)
-{
+int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
 	/* Initial user-level stack pointer */
-	*stackptr = USERSTACK;// - (MYVM_STACKPAGES * PAGE_SIZE);
-	as->stack_ptr = USERSTACK;// - (MYVM_STACKPAGES * PAGE_SIZE);
+	*stackptr = USERSTACK;	// - (MYVM_STACKPAGES * PAGE_SIZE);
+	as->stack_ptr = USERSTACK;	// - (MYVM_STACKPAGES * PAGE_SIZE);
 	return 0;
 }

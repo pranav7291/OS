@@ -34,7 +34,6 @@
  * Address space structure and operations.
  */
 
-
 #include <vm.h>
 #include <mips/tlb.h>
 #include <spl.h>
@@ -49,23 +48,13 @@ struct vnode;
 /*
  * Address space - data structure associated with the virtual memory
  * space of a process.
- *
- * You write this.
  */
-
-//struct permission{
-//	bool read;
-//	bool write;
-//	bool execute;
-//};
 
 struct PTE{
 	vaddr_t vpn;
 	paddr_t ppn;
 	int permission;	//3 bits, how? R,W,E
 	int state;		//Is the pp located in memory or disk; MEM - in memory; DISK - in disk
-	bool valid;		//has a physical page been allocated for this virtual page or not
-	bool referenced;	//has the page been read or written to recently
 	paddr_t swapdisk_pos;	//to store the swapdisk addr
 	struct PTE *next;
 	struct lock *pte_lock;

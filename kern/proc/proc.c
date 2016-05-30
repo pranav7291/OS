@@ -128,18 +128,8 @@ proc_destroy(struct proc *proc)
 				kfree(proc->proc_filedesc[i]);
 				proc->proc_filedesc[i] = NULL;
 			}
-//			proc->proc_filedesc[i] = NULL;
 		}
 	}
-
-	//removing the thread
-//	struct thread *cur;
-//
-//	cur = curthread;
-//	if (proc->p_numthreads != 0) {
-//		proc_remthread(cur);
-//	}
-
 
 	KASSERT(proc != NULL);
 	KASSERT(proc != kproc);

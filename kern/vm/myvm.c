@@ -46,26 +46,16 @@
 #include <synch.h>
 
 
-
 void vm_bootstrap(void) {
 	last = ram_getsize();
 	first = ram_getfirstfree();
 
-	//pages below first (between first and 0) is already occupied.
-	//todo for part 2 - allocate all pages between 0 and first to kernel
-	//for the
 	num_pages = last/PAGE_SIZE;
 	coremap_size = num_pages * sizeof(struct coremap_entry);
-
-
-//	no_of_coremap_entries = (last - first)/PAGE_SIZE;
-
 
 	coremap = (struct coremap_entry *) PADDR_TO_KVADDR(first);
 	first = first + coremap_size; //change first to the address after the coremap allocation
 	first = ROUNDUP(first, PAGE_SIZE);
-
-//	paddr_t temp = first;
 
 	first_free_addr = first / PAGE_SIZE;
 	usedBytes = 0;
@@ -223,8 +213,6 @@ vaddr_t alloc_kpages(unsigned npages) {
 
 void free_kpages(vaddr_t addr) {
 
-	//todo free the memory
-
 	paddr_t paddr = KVADDR_TO_PADDR(addr) & PAGE_FRAME;
 	int i = paddr/PAGE_SIZE;
 	int index = 0;
@@ -250,7 +238,6 @@ void free_kpages(vaddr_t addr) {
 	}
 
 	usedBytes = usedBytes - temp * PAGE_SIZE;
-	//iterate over the coremap to find the address
 	spinlock_release(&coremap_spinlock);
 	return;
 }
@@ -286,7 +273,6 @@ paddr_t page_alloc(struct PTE *pte) {
 			return returner;
 		}
 	}
-	//todo no page found. write logic for swapout
 	if (swapping) {
 		page_ind = evict();
 		coremap[page_ind].state = CLEAN;
@@ -309,7 +295,6 @@ paddr_t page_alloc(struct PTE *pte) {
 
 void page_free(paddr_t paddr) {
 
-	//todo free the memory
 	int i = paddr/PAGE_SIZE;
 
 	vm_tlbshootdownvaddr(PADDR_TO_KVADDR(paddr));
@@ -405,7 +390,6 @@ int evict(){
 	coremap[victim].busy = 1;
 	KASSERT(coremap[victim].pte_ptr != NULL);
 	paddr_t paddr = PAGE_SIZE * victim;
-	//todo shoot down from the TLB. Check this
 	vm_tlbshootdownvaddr(coremap[victim].pte_ptr->vpn);
 	spinlock_release(&coremap_spinlock);
 
@@ -416,7 +400,6 @@ int evict(){
 
 	lock_acquire(coremap[victim].pte_ptr->pte_lock);
 	if (coremap[victim].state == DIRTY){
-		//todo set the VA for all pages
 		swapout(coremap[victim].pte_ptr->swapdisk_pos, paddr);
 	}
 
@@ -444,21 +427,7 @@ void vm_tlbshootdown_all(void) {
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {
-//	uint32_t lo, hi;
-//	int tlb_ind;
-//	tlb_ind = ts->tlb_indicator;
 	vm_tlbshootdownvaddr(ts->vaddr);
-//
-//
-//	int x = splhigh();
-//
-//	tlb_read(&hi, &lo, tlb_ind);
-//	int i = tlb_probe(hi,0);
-//	if(i >= 0){
-//		tlb_write(TLBHI_INVALID(tlb_ind),TLBLO_INVALID(),i);
-//	}
-//	splx(x);
-//	spinlock_release(&tlb_spinlock);
 }
 
 void vm_tlbshootdownvaddr(vaddr_t vaddr) {
@@ -626,7 +595,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 		splx(x);
 		spinlock_release(&tlb_spinlock);
 	} else if (faulttype == VM_FAULT_READONLY){
-		//todo mark in coremap as DIRTY
 		if (swapping) {
 			spinlock_acquire(&coremap_spinlock);
 			coremap[(curr->ppn / PAGE_SIZE)].state = DIRTY;

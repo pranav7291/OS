@@ -140,11 +140,6 @@ common_prog(int nargs, char **args)
 		proc_destroy(proc);
 		return result;
 	}
-//	result = sys_waitpid(proc->pid, &status, 1000, &retval);
-//	if (result){
-//		panic("rkjnekrn");
-//		return 0;
-//	}
 	sys_waitpid(proc->pid, &status, 1000, &retval);
 
 	/*

@@ -18,8 +18,6 @@
 #include <kern/wait.h>
 #include <syscall.h>
 
-
-
 struct lock *p_lock;
 
 struct proc *pt_proc[256];
@@ -28,27 +26,22 @@ struct proc *pt_proc[256];
 
 //initializes file table
 void pt_init() {
-	//kprintf("creating the proc table");
 	for (int i = 0; i < 256; i++) {
-		pt_proc[i]= NULL;
+		pt_proc[i] = NULL;
 	}
-//	proc_count = 1;
 	p_lock = lock_create("ptable lock");
 }
 
 // inserts process into file table, returns PID
-
 pid_t insert_process_into_process_table(struct proc *newproc) {
 
 	lock_acquire(p_lock);
 	pid_t i = 2;
 	for (i = 2; i < 256; i++) {
 		if (pt_proc[i] == NULL) {
-			//kprintf("inserting process slot at pid->%d\n", i);
 			newproc->pid = i;
 			newproc->parent_pid = curproc->pid;
 			pt_proc[i] = newproc;
-//			proc_count++;
 			break;
 		}
 	}
@@ -62,15 +55,10 @@ pid_t insert_process_into_process_table(struct proc *newproc) {
 	}
 }
 
-
-/**
- * sammmokka
- */
-
 static void entrypoint(void* data1, unsigned long data2) {
 
 	struct trapframe tf;
-	data2=data2+100;
+	data2 = data2 + 100;
 
 	tf = *(struct trapframe *) data1;
 
@@ -83,31 +71,25 @@ static void entrypoint(void* data1, unsigned long data2) {
 	mips_usermode(&tf);
 }
 
-
-
-int sys_fork(struct trapframe *tf, int *retval)  {
+int sys_fork(struct trapframe *tf, int *retval) {
 
 	//create new thread
 //	kprintf(".");
 	*retval = -1;
 	struct proc *newproc;
 	newproc = proc_create_runprogram("name");
-	if(newproc == NULL){
+	if (newproc == NULL) {
 		return ENOMEM;
 	}
 
 	//Copy parents address space
-	if (as_copy(curproc->p_addrspace,&newproc->p_addrspace)) {
-//		sem_destroy(newproc->proc_sem);
-//		proc_destroy(newproc);
+	if (as_copy(curproc->p_addrspace, &newproc->p_addrspace)) {
 		return ENOMEM;
 	}
 
 	//Copy parents trapframe
 	struct trapframe *tf_child = kmalloc(sizeof(struct trapframe));
-	if(tf_child == NULL){
-//		sem_destroy(newproc->proc_sem);
-//		proc_destroy(newproc);
+	if (tf_child == NULL) {
 		return ENOMEM;
 	}
 	*tf_child = *tf;
@@ -116,7 +98,7 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 
 	//copy parents filetable entries
 	for (int k = 0; k < OPEN_MAX; k++) {
-		if (curproc->proc_filedesc[k]!=NULL) {
+		if (curproc->proc_filedesc[k] != NULL) {
 			lock_acquire(curproc->proc_filedesc[k]->fd_lock);
 			newproc->proc_filedesc[k] = curproc->proc_filedesc[k];
 			newproc->proc_filedesc[k]->fd_refcount++;
@@ -125,41 +107,24 @@ int sys_fork(struct trapframe *tf, int *retval)  {
 		}
 	}
 
-	newproc->p_cwd=curproc->p_cwd;
+	newproc->p_cwd = curproc->p_cwd;
 	VOP_INCREF(curproc->p_cwd);
 
-//	*retval = newproc->pid;
-
-	if(thread_fork("Child Thread", newproc,
-					entrypoint,  (void* ) tf_child,
-					(unsigned long)0)) {
-//		sem_destroy(newproc->proc_sem);
-//		proc_destroy(newproc);
+	if (thread_fork("Child Thread", newproc, entrypoint, (void*) tf_child,
+			(unsigned long) 0)) {
 		return ENOMEM;
 	}
-
 	//kprintf("forked to pid->%d", newproc->pid);
-
-	//sammokka end
 	*retval = newproc->pid;
 	return 0;
 }
 
-/**
- * added by sammokka
- */
 int sys_getpid(int *retval) {
 	*retval = curproc->pid;
 	return 0;
 }
 
-
-/**added by sammokka
- *
- *
- */
-pid_t
-sys_waitpid(pid_t pid, int *status, int options, int *retval) {
+pid_t sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 	//kprintf("\nwaiting on pid %d", pid);
 	*retval = -1;
 	if (pid == curproc->parent_pid || pid == curproc->pid) {
@@ -183,11 +148,11 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 		return ESRCH;
 	}
 
-	if(options != 1000){
-	if (pt_proc[pid]->parent_pid == curproc->parent_pid){
-		return ECHILD;
-	}}
-
+	if (options != 1000) {
+		if (pt_proc[pid]->parent_pid == curproc->parent_pid) {
+			return ECHILD;
+		}
+	}
 
 	if (pt_proc[pid]->isexited == false) {
 		P(pt_proc[pid]->proc_sem);
@@ -196,26 +161,23 @@ sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 	*retval = pid;
 
 	if (status != NULL) {
-//		int exitcd = pt_proc[pid]->exitcode;
-		int result = copyout((const void *) &(pt_proc[pid]->exitcode), (userptr_t) status,
-				sizeof(int));
+		int result = copyout((const void *) &(pt_proc[pid]->exitcode),
+				(userptr_t) status, sizeof(int));
 
 		if (result) {
-//			sem_destroy(pt_proc[pid]->proc_sem);
 			proc_destroy(pt_proc[pid]);
 			pt_proc[pid] = NULL;
 			return result;
 		}
 	}
 
-//	sem_destroy(pt_proc[pid]->proc_sem);
 	proc_destroy(pt_proc[pid]);
 	pt_proc[pid] = NULL;
 	//kprintf("\ndestroyed pid %d", pid);
 	return 0;
 }
 
-int sys_execv(const char *program, char **uargs, int *retval){
+int sys_execv(const char *program, char **uargs, int *retval) {
 
 	struct vnode *v;
 	vaddr_t entrypoint, stackptr;
@@ -224,113 +186,88 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	char *name;
 	int i = 0;
 
-//	kprintf("\ninside execv:entered:");
-//	kheap_printused();
-
 	*retval = -1;
 
-	if (uargs == NULL || program == NULL){
+	if (uargs == NULL || program == NULL) {
 		return EFAULT;
 	}
 
-
 	size_t length1;
 	result = copycheck1((const_userptr_t) program, PATH_MAX, &length1);
-	if(result){
+	if (result) {
 		return result;
 	}
 
 	result = copycheck1((const_userptr_t) uargs, PATH_MAX, &length1);
-	if(result){
+	if (result) {
 		return result;
 	}
 
-//	if (uargs[1] == NULL){
-//		return EFAULT;
-//	}
-
-
-
-	name = (char *)kmalloc(sizeof(char) *PATH_MAX);
-	if(name == NULL){
+	name = (char *) kmalloc(sizeof(char) * PATH_MAX);
+	if (name == NULL) {
 		return ENOMEM;
 	}
-	result = copyinstr((const_userptr_t)program, name, PATH_MAX,&length);
-	if (result){
+	result = copyinstr((const_userptr_t) program, name, PATH_MAX, &length);
+	if (result) {
 		kfree(name);
 		return EFAULT;
 	}
 
-	if((void *) program== (void *)0x40000000 || (void *) uargs== (void *)0x40000000){
+	if ((void *) program == (void *) 0x40000000
+			|| (void *) uargs == (void *) 0x40000000) {
 		kfree(name);
 		return EFAULT;
 	}
 
-	if((char *)program==NULL || (char *)program=='\0'){
+	if ((char *) program == NULL || (char *) program == '\0') {
 		kfree(name);
 		return EINVAL;
 	}
 
-	if(length < 2 || length > PATH_MAX){
+	if (length < 2 || length > PATH_MAX) {
 		kfree(name);
 		return EINVAL;
 	}
 
-	if((void *) uargs[1] == (void *)0x40000000){
-			kfree(name);
-			return EFAULT;
+	if ((void *) uargs[1] == (void *) 0x40000000) {
+		kfree(name);
+		return EFAULT;
 	}
-
-//	char *tempo = (char *) kmalloc(sizeof(char) * (totallen+1));;
-//	result = copyinstr((const_userptr_t) uargs[1], tempo, (sizeof(char) * (strlen(uargs[1])+1)), &length);
-//	if (result) {
-//		kfree(name);
-//		return EFAULT;
-//	}
-
-//	result = copycheck1((const_userptr_t) uargs[1], PATH_MAX, &length1);
-//	if(result){
-//		return result;
-//	}
 
 	int len = 0;
 	int act = 0;
 	int x = 0;
 	int totallen = 0;
-	while (uargs[x] != NULL){
-		len = strlen(uargs[x])+1;
-		if ((len % 4)!= 0){
+	while (uargs[x] != NULL) {
+		len = strlen(uargs[x]) + 1;
+		if ((len % 4) != 0) {
 			len = len - (len % 4) + 4;
 		}
 		totallen = totallen + len;
 		x++;
 	}
 
-	char *buf = (char *) kmalloc(sizeof(char) * (totallen+1));
-	if(buf == NULL){
+	char *buf = (char *) kmalloc(sizeof(char) * (totallen + 1));
+	if (buf == NULL) {
 		kfree(name);
 		return ENOMEM;
 	}
 	char **ptrbuf = (char **) kmalloc(sizeof(char **) * x);
-	if(ptrbuf == NULL){
+	if (ptrbuf == NULL) {
 		kfree(name);
 		kfree(buf);
 		return ENOMEM;
 	}
 	char *temp = buf;
-	while (uargs[i] != NULL ) {
-		//		args[i] = (char *) kmalloc(sizeof(char) * PATH_MAX);
-		//		result = copyinstr((const_userptr_t) uargs[i], args[i], PATH_MAX, &length);
+	while (uargs[i] != NULL) {
 		length = 0;
-		len = strlen(uargs[i])+1;
+		len = strlen(uargs[i]) + 1;
 		act = len;
-		if ((len % 4)!= 0){
+		if ((len % 4) != 0) {
 			len = len - (len % 4) + 4;
 		}
-//		args[i] = (char *) kmalloc(sizeof(char) * len);
-		result = copyinstr((const_userptr_t) uargs[i], temp, (sizeof(char) * (strlen(uargs[i])+1)), &length);
-//		if (length > ARG_MAX)
-//			return E2BIG;
+		result = copyinstr((const_userptr_t) uargs[i], temp,
+				(sizeof(char) * (strlen(uargs[i]) + 1)), &length);
 		if (result) {
 			kfree(name);
 			kfree(ptrbuf);
@@ -338,11 +275,9 @@ int sys_execv(const char *program, char **uargs, int *retval){
 			return EFAULT;
 		}
 
-//		temp = temp + (strlen(uargs[i]) * sizeof(char));
-		temp = temp + (strlen(uargs[i])+1);
-		while(act < len){
+		temp = temp + (strlen(uargs[i]) + 1);
+		while (act < len) {
 			*temp = '\0';
-//			temp = temp + sizeof(char);
 			temp++;
 			act++;
 		}
@@ -350,7 +285,6 @@ int sys_execv(const char *program, char **uargs, int *retval){
 		i++;
 	}
 	argmax = i;
-
 
 	//Now proceeding as in runprogram
 	/* Open the file. */
@@ -366,14 +300,6 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	as_destroy(curproc->p_addrspace);
 	curproc->p_addrspace = NULL;
 	KASSERT(proc_getas() == NULL);
-
-//	for (int k = 0; k < OPEN_MAX; k++) {
-//		if (curproc->proc_filedesc[k]!=NULL) {
-//			lock_acquire(curproc->proc_filedesc[k]->fd_lock);
-//			curproc->proc_filedesc[k]->fd_refcount++;
-//			lock_release(curproc->proc_filedesc[k]->fd_lock);
-//		}
-//	}
 
 	/* Create a new address space. */
 	curproc->p_addrspace = as_create();
@@ -417,51 +343,43 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	i = 0;
 	temp = buf;
 	char *temp1 = buf;
-//	char *helper[argmax];
-	while(i < argmax){
-//		length = strlen(args[i]) + 1;
-
-//		if ((length % 4)!= 0){
-//			length = length - (length % 4) + 4;
-//		}
+	while (i < argmax) {
 		length = 0;
 		len = 0;
-		while (*temp != '\0'){
-//			temp = temp + sizeof(char);
+		while (*temp != '\0') {
 			temp++;
 			len++;
 		}
 		temp++;
 		len++;
-		if((len % 4)!=0){
+		if ((len % 4) != 0) {
 			temp = temp + 4 - (len % 4);
 			len = len - (len % 4) + 4;
 		}
 
 		stackptr = stackptr - len;
 		act = len;
-		result = copyout((const void *)(temp1), (userptr_t)stackptr, len);
-		if (result){
+		result = copyout((const void *) (temp1), (userptr_t) stackptr, len);
+		if (result) {
 			kfree(name);
 			kfree(ptrbuf);
 			kfree(buf);
 			return EFAULT;	//not sure whether to return this or result
 		}
-//		temp1 = (char *)stackptr;
-//		temp1 = temp1 + (len * sizeof(char));
 		temp1 = temp1 + (act);
-		ptrbuf[i] = (char *)stackptr;
+		ptrbuf[i] = (char *) stackptr;
 
 		i++;
 	}
 
-	stackptr = stackptr - 4*sizeof(char);
+	stackptr = stackptr - 4 * sizeof(char);
 
 	//Copying the pointers
-	for(i = argmax - 1; i >= 0; i--){
+	for (i = argmax - 1; i >= 0; i--) {
 		stackptr = stackptr - sizeof(char *);
-		result = copyout((const void *)(ptrbuf + i), (userptr_t)stackptr, sizeof(char *));
-		if (result){
+		result = copyout((const void *) (ptrbuf + i), (userptr_t) stackptr,
+				sizeof(char *));
+		if (result) {
 			kfree(name);
 			kfree(ptrbuf);
 			kfree(buf);
@@ -472,14 +390,10 @@ int sys_execv(const char *program, char **uargs, int *retval){
 	kfree(ptrbuf);
 	kfree(buf);
 
-//	kprintf("\ninside execv:before enter_n_p:");
-//	kheap_printused();
-
-
 	/* Warp to user mode. */
-	enter_new_process(argmax /*argc*/, (userptr_t)stackptr /*userspace addr of argv*/,
-				NULL /*userspace addr of environment*/,
-				 stackptr, entrypoint);
+	enter_new_process(argmax /*argc*/,
+			(userptr_t) stackptr /*userspace addr of argv*/,
+			NULL /*userspace addr of environment*/, stackptr, entrypoint);
 
 	/* enter_new_process does not return. */
 	panic("panic - execv, After enter_new_process\n");
@@ -490,13 +404,12 @@ int sys_execv(const char *program, char **uargs, int *retval){
 int sys_exit(int code) {
 	//kprintf("exiting pid %d", curproc->pid);
 	struct proc * proc = curproc;
-	(void)proc;
+	(void) proc;
 	curproc->isexited = true;
-	if (code == 0){
-		curproc->exitcode=_MKWAIT_EXIT(code);
-	}
-	else {
-		curproc->exitcode=_MKWAIT_SIG(code);
+	if (code == 0) {
+		curproc->exitcode = _MKWAIT_EXIT(code);
+	} else {
+		curproc->exitcode = _MKWAIT_SIG(code);
 	}
 	V(curproc->proc_sem);
 
@@ -505,28 +418,29 @@ int sys_exit(int code) {
 	return 0;
 }
 
-int sys_sbrk(int amt, int *retval){
+int sys_sbrk(int amt, int *retval) {
 	struct addrspace * as = curproc->p_addrspace;
 	vaddr_t heap_top = curproc->p_addrspace->heap_top;
 	vaddr_t heap_bottom = curproc->p_addrspace->heap_bottom;
 	*retval = -1;
-	if(amt == 0){
+	if (amt == 0) {
 		*retval = heap_top;
 		return 0;
 	}
 
-	if((amt % 4) != 0){//check if it's aligned by 4
+	if ((amt % 4) != 0) {	//check if it's aligned by 4
 		return EINVAL;
 	}
 
-	if(amt < 0){//heap size decreased
-		if((long)heap_top + (long)amt < (long)heap_bottom){
+	if (amt < 0) {	//heap size decreased
+		if ((long) heap_top + (long) amt < (long) heap_bottom) {
 			return EINVAL;
 		}
 		amt *= -1;
 		//		vm_tlbshootdown_all();
-		if (amt >= PAGE_SIZE){
-			for(unsigned i = ((int)(heap_top & PAGE_FRAME) - amt); i < (heap_top & PAGE_FRAME); i = i + PAGE_SIZE){
+		if (amt >= PAGE_SIZE) {
+			for (unsigned i = ((int) (heap_top & PAGE_FRAME) - amt);
+					i < (heap_top & PAGE_FRAME); i = i + PAGE_SIZE) {
 				struct PTE *prev, *curr;
 				if (as->pte->vpn == i) {
 					curr = as->pte;
@@ -545,7 +459,8 @@ int sys_sbrk(int amt, int *retval){
 					kfree(curr);
 				} else {
 					prev = as->pte;
-					for (curr = as->pte->next; curr != NULL; curr =	curr->next) {
+					for (curr = as->pte->next; curr != NULL; curr =
+							curr->next) {
 						if (curr->vpn == i) {
 							if (swapping) {
 								if (curr->state == MEM) {
@@ -569,20 +484,18 @@ int sys_sbrk(int amt, int *retval){
 			}
 			*retval = heap_top;
 			heap_top -= (amt & PAGE_FRAME);
-		}
-		else{
+		} else {
 			*retval = heap_top;
 			heap_top -= (amt & PAGE_FRAME);
 			vm_tlbshootdownvaddr(heap_top);
 		}
-	}
-	else{
-		if((heap_top + amt) > (USERSTACK - MYVM_STACKPAGES * PAGE_SIZE)){
+	} else {
+		if ((heap_top + amt) > (USERSTACK - MYVM_STACKPAGES * PAGE_SIZE)) {
 			return ENOMEM;
 		}
 
-		if((long)amt >= (long)PAGE_SIZE){
-			if ((long)amt > (long)(as->stack_ptr - as->heap_top)){
+		if ((long) amt >= (long) PAGE_SIZE) {
+			if ((long) amt > (long) (as->stack_ptr - as->heap_top)) {
 				return ENOMEM;
 			}
 		}
